@@ -101,7 +101,7 @@ async def install_vpn(callback: CallbackQuery, bot: Bot):
 
             user_paid = await db.get_user_data(chat_id, ["paid"])
 
-            if not user_paid:
+            if not user_paid[0]:
                 await callback.message.edit_text(
                     text="Вы еще не приобрели доступ к VPN или оплата просрочена",
                     reply_markup=markup.pay_vpn
