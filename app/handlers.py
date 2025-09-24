@@ -118,26 +118,26 @@ async def install_vpn(callback: CallbackQuery, bot: Bot):
         try:
             xui_data = xui.get_user_data(chat_id)
             access_key = xui_data["PC"]["id"]
-            msg = "Порядок установки VPN на компьютер:\n" \
-                    "1. Разархивируйте .zip файл в удобное место\n" \
-                    "2. Откройте файл *** \n" \
-                    "3. Введите ваш ключ доступа\n" \
-                    "4. Запустите VPN (ПКМ по имени профиля -> Запустить)\n\n" \
+            msg = "С порядоком установки VPN на компьютер вы можете ознакомиться по этой ссылке:\n" \
+                    "https://teletype.in/@kn1ver/install-pc \n\n" \
                     f"Ваш ключ доступа: <code>{access_key}</code>\n\n Архивы отправляются ▯▯▯▯▯▯▯▯▯▯"
 
             msg_id = await callback.message.edit_text(
                 text=msg,
                 reply_markup=markup.to_platforms,
                 parse_mode="HTML")
-            archive, dll, dst, archive_path = await utils.get_archive(chat_id, bot, int(msg_id.message_id), access_key)
 
+            archive, dll, dst, archive_path = await utils.get_archive(chat_id, bot, int(msg_id.message_id), access_key)
+            launcher = FSInputFile("files/first_launch.exe")
+
+            await callback.message.answer_document(launcher)
             await callback.message.answer_document(archive)
             msg = msg[:-10] + "▮▮▮▮▮▮▮▯▯▯"
-            await callback.message.edit_text(msg)
+            await callback.message.edit_text(text=msg, parse_mode="HTML")
 
             await callback.message.answer_document(dll)
             msg = msg[:-10] + "▮▮▮▮▮▮▮▮▮▮"
-            await callback.message.edit_text(msg)
+            await callback.message.edit_text(text=msg, parse_mode="HTML", reply_markup=markup.to_platforms)
 
             logger.debug("Архивы отправлены")
 
@@ -145,6 +145,7 @@ async def install_vpn(callback: CallbackQuery, bot: Bot):
             if archive_path.exists():
                 os.remove(archive_path)
             logger.debug("Временные архивы удалены")
+
 
         except Exception as e:
             logger.error(e, exc_info=True)

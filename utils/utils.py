@@ -71,11 +71,8 @@ async def get_archive(user_id: str, bot: Bot, msg_id: int, access_key):
     aes_key = hashlib.sha256(str(xui_id).encode("utf-8")).digest()
     chat_id = user_id
     randint = random.randint(0, 1000)
-    msg = "Порядок установки VPN на компьютер:\n" \
-            "1. Разархивируйте .zip файл в удобное место\n" \
-            "2. Откройте файл *** \n" \
-            "3. Введите ваш ключ доступа\n" \
-            "4. Запустите VPN (ПКМ по имени профиля -> Запустить)\n\n" \
+    msg = "С порядоком установки VPN на компьютер вы можете ознакомиться по этой ссылке:\n" \
+            "https://teletype.in/@kn1ver/install-pc \n\n" \
             f"Ваш ключ доступа: <code>{access_key}</code>\n\n Архивы отправляются ▯▯▯▯▯▯▯▯▯▯"
 
     src = FILES_DIR / "nekoray"
@@ -86,7 +83,8 @@ async def get_archive(user_id: str, bot: Bot, msg_id: int, access_key):
     await bot.edit_message_text(
         chat_id=chat_id,
         message_id=msg_id,
-        text=msg
+        text=msg,
+        parse_mode="HTML"
     )
     logger.debug("Папка nekoray скопирована")
 
@@ -109,7 +107,8 @@ async def get_archive(user_id: str, bot: Bot, msg_id: int, access_key):
     await bot.edit_message_text(
         chat_id=chat_id,
         message_id=msg_id,
-        text=msg
+        text=msg,
+        parse_mode="HTML"
     )
 
     # создаём архив
@@ -120,7 +119,8 @@ async def get_archive(user_id: str, bot: Bot, msg_id: int, access_key):
     await bot.edit_message_text(
         chat_id=chat_id,
         message_id=msg_id,
-        text=msg
+        text=msg,
+        parse_mode="HTML"
     )
 
     # возвращаем InputFile
