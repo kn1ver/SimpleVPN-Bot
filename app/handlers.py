@@ -123,17 +123,17 @@ async def install_vpn(callback: CallbackQuery, bot: Bot):
     elif "pc" in callback.data:
         try:
             xui_data = xui.get_user_data(chat_id)
-            access_key = xui_data["PC"]["id"]
+            xui_id = xui_data["PC"]["id"]
             msg = "С порядоком установки VPN на компьютер вы можете ознакомиться по этой ссылке:\n" \
                     "https://teletype.in/@kn1ver/install-pc \n\n" \
-                    f"Ваш ключ доступа: <code>{access_key}</code>\n\n Архивы отправляются ▯▯▯▯▯▯▯▯▯▯"
+                    f"Ваш ключ доступа: <code>{xui_id}</code>\n\n Архивы отправляются ▯▯▯▯▯▯▯▯▯▯"
 
             msg_id = await callback.message.edit_text(
                 text=msg,
                 reply_markup=markup.to_platforms,
                 parse_mode="HTML")
 
-            archive, dll, dst, archive_path = await utils.get_archive(chat_id, bot, int(msg_id.message_id), access_key)
+            archive, dll, dst, archive_path = await utils.get_archive(chat_id, bot, int(msg_id.message_id))
             launcher = FSInputFile("files/first_launch.exe")
 
             await callback.message.answer_document(launcher)

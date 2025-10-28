@@ -8,7 +8,7 @@ async def create_db() -> None:
 
     async with aiosqlite.connect('bot.sql') as connection:
         cursor = await connection.cursor()
-        await cursor.execute('CREATE TABLE IF NOT EXISTS users (chat_id INTEGER PRIMARY KEY, activate_key TEXT, activated INTEGER, paid INTEGER)')
+        await cursor.execute('CREATE TABLE IF NOT EXISTS users (chat_id INTEGER PRIMARY KEY, xui_id TEXT, activated INTEGER, paid INTEGER)')
         await connection.commit()
 
     logger.debug("База данных создана")
@@ -41,6 +41,8 @@ async def set_user_data(filter: str, filter_value: str, key: str, value: str):
         await cursor.execute(query)
         await connection.commit()
 
+    logger.debug(f"Изменение данных пользователя\nФильтр: {filter} | Значение: {filter_value}\nПоле: {key} | Значение: {value}")
+
 
 async def get_user_data(filter: str, filter_value: str, columns: list) -> list:
     """
@@ -55,7 +57,7 @@ async def get_user_data(filter: str, filter_value: str, columns: list) -> list:
         await cursor.execute(query)
         user_data = await cursor.fetchall()
 
-    return user_data[0]
+    return user_data
 
 
 async def search_for_key(key):
@@ -75,16 +77,3 @@ async def search_for_key(key):
         data = await cursor.fetchall()
 
     return [chat_id, activated]
-
-async def set_activated(user_id: str, value: int):
-    """
-    Устанавливает ключ активации пользователя
-    """
-
-    async with aiosqlite.connect('bot.sql') as connection:
-        cursor = await connection.cursor()
-        await cursor.execute(f"UPDATE users SET activated = '{value}' WHERE chat_id = '{user_id}'")
-        await connection.commit()
-
-    logger.debug(f"Для пользователя {user_id} activated установлен на {value}")
-    return True
