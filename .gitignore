@@ -1,0 +1,10 @@
+.venv/
+.env
+*.log
+__pycache__/
+*test*.*
+build/
+dist/
+build_nekoray.*
+temp/
+*.sql

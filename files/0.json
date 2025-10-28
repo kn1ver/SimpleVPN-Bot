@@ -1,0 +1,30 @@
+{
+    "bean": {
+        "_v": 0,
+        "addr": "91.228.153.25",
+        "c_cfg": "{\"experimental\":{\"cache_file\":{\"enabled\":true}},\"route\":{\"auto_detect_interface\":true,\"final\":\"direct\",\"rule_set\":[{\"download_detour\":\"direct\",\"format\":\"binary\",\"tag\":\"refilter_domains\",\"type\":\"remote\",\"url\":\"https://github.com/1andrevich/Re-filter-lists/releases/latest/download/ruleset-domain-refilter_domains.srs\"},{\"download_detour\":\"direct\",\"format\":\"binary\",\"tag\":\"refilter_ipsum\",\"type\":\"remote\",\"url\":\"https://github.com/1andrevich/Re-filter-lists/releases/latest/download/ruleset-ip-refilter_ipsum.srs\"}]}}",
+        "flow": "xtls-rprx-vision",
+        "name": "",
+        "pass": "",
+        "port": 443,
+        "stream": {
+            "ed_len": 0,
+            "insecure": false,
+            "mux_s": 0,
+            "net": "tcp",
+            "pbk": "NbVaXjLA9Q1w1lcBc3vmcDYkSyKbEc7LNbIC1FPK9SI",
+            "sec": "tls",
+            "sni": "samsung.com",
+            "spx": "/",
+            "utls": "chrome"
+        }
+    },
+    "gid": 0,
+    "id": 0,
+    "traffic": {
+        "dl": 25141484428,
+        "ul": 5118123744
+    },
+    "type": "vless",
+    "yc": -1
+}
