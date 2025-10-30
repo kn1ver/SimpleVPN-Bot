@@ -18,11 +18,10 @@ async def check_key():
     xui_id = data['xui_id']
     try:
         user_data = await db.get_user_data("xui_id", xui_id, ["activated", "chat_id"])
-        logger.debug(str(user_data))
         if user_data:
             activated = user_data[0][0]
             chat_id = user_data[0][1]
-            logger.debug(activated, chat_id)
+            logger.debug(f"[check_key] {activated} {chat_id}")
         else:
             activated = ""
             chat_id = ""
@@ -38,8 +37,9 @@ async def set_activate():
         return jsonify({"error": "Отсутствует поле 'chat_id'"}), 400
 
     chat_id = data['chat_id']
+    logger.debug(f"[set_activate] {chat_id}")
     try:
-        await db.set_user_data('chat_id', chat_id, 'activated', '1')
+        await db.set_user_data('chat_id', str(chat_id), 'activated', '1')
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500

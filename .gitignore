@@ -1,10 +1,13 @@
 .venv/
+venv/
 .env
 *.log
 __pycache__/
 *test*.*
 build/
 dist/
-build_nekoray.*
+build_nekoray*.*
 temp/
 *.sql
+build tests/
+oferta*

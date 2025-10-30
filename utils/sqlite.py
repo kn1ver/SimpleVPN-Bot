@@ -31,7 +31,7 @@ async def reg_user(user_id: str):
 
 async def set_user_data(filter: str, filter_value: str, key: str, value: str):
     """
-    Задает key значние value по filter 
+    Задает для key значение: value по filter 
     """
 
     query = f"UPDATE users SET {key} = '{value}' WHERE {filter} = '{filter_value}'"

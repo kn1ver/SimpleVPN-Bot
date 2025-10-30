@@ -18,7 +18,6 @@ def xui_login():
 
     return r
 
-
 def get_user_data(user_id: str):
     """
     Возвращает email, активность, статус соединения, трафик (загрузка/скачивание/всего) и дату окончания by user email

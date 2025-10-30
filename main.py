@@ -15,6 +15,7 @@ async def main():
         logger.info("Бот запущен")
     except Exception as e:
         logger.critical(e)
+
 if __name__ == '__main__':
     while True:
         try:

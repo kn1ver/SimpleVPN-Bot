@@ -105,7 +105,7 @@ async def install_vpn(callback: CallbackQuery, bot: Bot):
     if "vpn" in callback.data:
         try:
 
-            user_paid = await db.get_user_data(chat_id, ["paid"])
+            user_paid = await db.get_user_data("chat_id", str(chat_id), ["paid"])
 
             if not user_paid[0]:
                 await callback.message.edit_text(
@@ -217,7 +217,7 @@ async def pay_vpn(callback: CallbackQuery, bot: Bot):
     elif "buy" in callback.data:
         try:
 
-            await callback.message.answer_invoice()
+            await callback.message.answer(text="Оплата не доступна на данный момент.")
 
         except Exception as e:
             logger.error(e)
