@@ -218,6 +218,14 @@ async def pay_vpn(callback: CallbackQuery, bot: Bot):
         try:
 
             await callback.message.answer(text="Оплата не доступна на данный момент.")
+            return
+
+            # TODO что делаем после оплаты
+            # регаем юзера в xui (выполнено)
+            # регаем юзера в sqlite (в процессе)
+            # рассчитывать сроки списания и тп (в процессе)
+            xui.reg_user_connection(str(callback.message.chat.id))
+
 
         except Exception as e:
             logger.error(e)

@@ -1,5 +1,7 @@
 import requests
 import json
+import time
+import uuid
 import utils.utils as utils
 from utils.logger import logger
 
@@ -73,4 +75,35 @@ def get_user_data(user_id: str):
     #     json.dump(result, f)
 
     return result
+
+def reg_user_connection(user_id: str):
+
+    xui_login()
+
+    platforms = ["PC", "Android", "IOS"]
+
+    for platform in platforms:
+        client_uuid = str(uuid.uuid4())
+        client_settings = {
+            "clients": [{
+                "id": client_uuid,
+                "flow": "xtls-rprx-vision",
+                "email": f"{user_id} {platform}",
+                "totalGB": 0,
+                "expiryTime": int((time.time() + 31 * 24 * 3600) * 1000),
+                "enable": True,
+                "tgId": user_id,
+                "subId": "autogen-" + client_uuid[:8],
+                "limitIp": 1,
+                "reset": 0
+            }]
+        }
+        json_body = {
+            "id": INBOUND_ID,
+            "settings": json.dumps(client_settings)
+        }
+        r = session.post(f"{XUI_URL}/xui/API/inbounds/addClient/", json=json_body)
+        logger.debug(f"Ответ сервера [addClient]: {r.status_code} {r.text}")
+
+    return True
 
