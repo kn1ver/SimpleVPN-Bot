@@ -29,10 +29,14 @@ async def start (message: Message, bot: Bot, state: FSMContext):
             )
 
         try:
-            await db.reg_user(message.chat.id)
             await db.create_db()
         except:
             pass
+
+        try:
+            await db.reg_user(str(message.chat.id))
+        except Exception as e:
+            logger.error(f"Не удалось зарегистрировать пользователя {message.chat.id}: {e}")
 
         # await bot.send_message(
         #     chat_id=1616183086,
@@ -108,7 +112,7 @@ async def install_vpn(callback: CallbackQuery, bot: Bot):
 
             user_paid = await db.get_user_data("chat_id", str(chat_id), ["paid"])
 
-            if not user_paid[0]:
+            if not user_paid[0][0]:
                 await callback.message.edit_text(
                     text="Вы еще не приобрели доступ к VPN или оплата просрочена",
                     reply_markup=markup.pay_vpn
@@ -219,24 +223,36 @@ async def pay_vpn(callback: CallbackQuery, bot: Bot):
         try:
 
             await callback.message.answer(text="Оплата не доступна на данный момент.")
-            return
+
+            if callback.message.chat.id != 1616183086:
+                return
 
             # TODO что делаем после оплаты
+            #
             # регаем юзера в xui (выполнено)
-            # регаем юзера в sqlite (в процессе)
-            # рассчитывать сроки списания и тп (в процессе)
+            # регаем юзера в sqlite (выполнено)
+            #
+            # рассчитывать сроки списания и тп (частично) ->
+            # -> продумать продление подписки (в процессе)
+            #
+            # вынести все сообщения в отдельный файл
+            # сообщение в главном меню после "назад" отличается от того же после "/start"
+
             user_id = str(callback.message.chat.id)
             xui.reg_user_connection(user_id)
             xui_id = xui.get_user_data(user_id)["PC"]["id"]
 
+            now = int(time.time())
+            expires = now + 31 * 24 * 3600
+
             await db.set_user_data("chat_id", user_id, "paid", 1)
             await db.set_user_data("chat_id", user_id, "xui_id", str(xui_id))
-            await db.set_user_data("chat_id", user_id, "bought_at", int(time.time()))
-            await db.set_user_data("chat_id", user_id, "expires_at", int(time.time() + 31 * 24 * 3600))
+            await db.set_user_data("chat_id", user_id, "bought_at", now)
+            await db.set_user_data("chat_id", user_id, "expires_at", expires)
 
             msg = (
-                "Подписка подключена. Спасибо за покупку!" /
-                "Истекает: " /
+                "Подписка подключена. Спасибо за покупку!"
+                f"Истекает: {expires}"
                 'Перейдите в раздел "Установить VPN" для установки.'
             )
 
