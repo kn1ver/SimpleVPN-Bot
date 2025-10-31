@@ -1,9 +1,10 @@
 from quart import Quart, request, jsonify
 import asyncio
 import utils.sqlite as db
-from utils.logger import logger
+from utils.logger import set_logger
 
 app = Quart(__name__)
+set_logger("logs/server.log", True)
 
 @app.route('/api/check_key', methods=['POST'])
 async def check_key():

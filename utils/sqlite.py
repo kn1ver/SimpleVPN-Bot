@@ -8,7 +8,7 @@ async def create_db() -> None:
 
     async with aiosqlite.connect('bot.sql') as connection:
         cursor = await connection.cursor()
-        await cursor.execute('CREATE TABLE IF NOT EXISTS users (chat_id INTEGER PRIMARY KEY, xui_id TEXT, activated INTEGER, paid INTEGER)')
+        await cursor.execute('CREATE TABLE IF NOT EXISTS users (chat_id INTEGER PRIMARY KEY, xui_id TEXT, activated INTEGER, paid INTEGER, bought_at INTEGER, expired_at INTEGER)')
         await connection.commit()
 
     logger.debug("База данных создана")
@@ -22,14 +22,14 @@ async def reg_user(user_id: str):
 
     async with aiosqlite.connect('bot.sql') as connection:
         cursor = await connection.cursor()
-        await cursor.execute(f"INSERT INTO users (chat_id, paid) VALUES ({user_id}, 0)")
+        await cursor.execute(f"INSERT INTO users (chat_id, xui_id, activated, paid) VALUES ({user_id}, None, 0, 0)")
         await connection.commit()
 
     logger.debug(f"Пользователь {user_id} зарегистрирован")
     return True
 
 
-async def set_user_data(filter: str, filter_value: str, key: str, value: str):
+async def set_user_data(filter: str, filter_value: str, key: str, value):
     """
     Задает для key значение: value по filter 
     """

@@ -2,6 +2,7 @@ import app.keyboards as markup
 import os
 import random
 import shutil
+import time
 
 from utils.logger import logger
 from utils import xui
@@ -224,8 +225,22 @@ async def pay_vpn(callback: CallbackQuery, bot: Bot):
             # регаем юзера в xui (выполнено)
             # регаем юзера в sqlite (в процессе)
             # рассчитывать сроки списания и тп (в процессе)
-            xui.reg_user_connection(str(callback.message.chat.id))
+            user_id = str(callback.message.chat.id)
+            xui.reg_user_connection(user_id)
+            xui_id = xui.get_user_data(user_id)["PC"]["id"]
 
+            await db.set_user_data("chat_id", user_id, "paid", 1)
+            await db.set_user_data("chat_id", user_id, "xui_id", str(xui_id))
+            await db.set_user_data("chat_id", user_id, "bought_at", int(time.time()))
+            await db.set_user_data("chat_id", user_id, "expires_at", int(time.time() + 31 * 24 * 3600))
+
+            msg = (
+                "Подписка подключена. Спасибо за покупку!" /
+                "Истекает: " /
+                'Перейдите в раздел "Установить VPN" для установки.'
+            )
+
+            await callback.message.answer(text=msg)
 
         except Exception as e:
             logger.error(e)

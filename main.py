@@ -12,14 +12,15 @@ async def main():
     try:
         disp.include_router(router_main)
         await disp.start_polling(bot, polling_timeout=60)
-        logger.info("Бот запущен")
     except Exception as e:
         logger.critical(e)
 
 if __name__ == '__main__':
     while True:
         try:
+            logger.info("Бот запущен")
             asyncio.run(main())
         except Exception as e:
             logger.critical(e, exc_info=True)
+            logger.info("Перезапускаю бота")
             continue
