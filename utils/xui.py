@@ -76,7 +76,7 @@ def get_user_data(user_id: str):
 
     return result
 
-def reg_user_connection(user_id: str):
+def reg_user_connection(user_id: str, expiry_time: int):
 
     xui_login()
 
@@ -90,7 +90,7 @@ def reg_user_connection(user_id: str):
                 "flow": "xtls-rprx-vision",
                 "email": f"{user_id} {platform}",
                 "totalGB": 0,
-                "expiryTime": int((time.time() + 31 * 24 * 3600) * 1000),
+                "expiryTime": expiry_time,
                 "enable": True,
                 "tgId": user_id,
                 "subId": "autogen-" + client_uuid[:8],

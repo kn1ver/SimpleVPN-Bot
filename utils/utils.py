@@ -30,7 +30,7 @@ def size_parser(num_bytes: int) -> str:
         size /= 1024
     return f"{size:.2f} PB"
 
-def parse_expiry_time(expiry_time: int) -> str:
+def parse_expiry_time(expiry_time: int, format: str | None="%Y-%m-%d %H:%M:%S") -> str:
     """
     Преобразует expiryTime (в миллисекундах) в удобную дату/время.
     """
@@ -39,7 +39,7 @@ def parse_expiry_time(expiry_time: int) -> str:
 
     # expiryTime приходит в миллисекундах -> делим на 1000
     dt = datetime.fromtimestamp(expiry_time / 1000)
-    return dt.strftime("%Y-%m-%d %H:%M:%S")
+    return dt.strftime(format)
 
 def encrypt_json(data: dict, aes_key: bytes) -> bytes:
     """Шифрует JSON-словарь и возвращает бинарные данные"""

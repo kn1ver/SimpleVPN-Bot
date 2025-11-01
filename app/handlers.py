@@ -9,6 +9,7 @@ from utils import xui
 from utils import sqlite as db
 from utils import utils as utils
 
+from datetime import datetime, timedelta
 from aiogram import F, Router, Bot
 from aiogram.filters import Command
 from aiogram.fsm.state import StatesGroup, State
@@ -94,7 +95,9 @@ async def return_to(callback: CallbackQuery, bot: Bot, state: FSMContext):
     await state.clear()
     try:
         if "main" in callback.data:
-            await callback.message.edit_text(text='Добро пожаловать. Что вас интересует?', reply_markup=markup.start)
+            await callback.message.edit_text(
+                text='🚀 Добро пожаловать в SimpleVPN!\nБезопасный и быстрый интернет без отслеживания и скрытых списаний',
+                reply_markup=markup.start)
 
         elif "platforms" in callback.data:
             await callback.message.edit_text(text='На какую платформу Вы хотите установить VPN?', reply_markup=markup.platforms)
@@ -168,7 +171,7 @@ async def install_vpn(callback: CallbackQuery, bot: Bot):
 
             routing_rules = '[{"enabled":true,"ip":["geoip:ru"],"looked":false,"outboundTag":"direct","remarks":"geoip direct"},{"domain":["geosite:category-gov-ru","geosite:yandex","geosite:vk","regexp:xn--"],"enabled":true,"looked":false,"outboundTag":"direct","remarks":"geosite direct"},{"domain":["geosite:category-ads-all"],"enabled":true,"looked":false,"outboundTag":"block","remarks":"ads block"},{"enabled":true,"ip":["geoip:private"],"looked":false,"outboundTag":"direct","remarks":"geoip private"},{"domain":["geosite:private"],"enabled":true,"looked":false,"outboundTag":"direct","remarks":"geosite private"}]'
 
-            await callback.message.answer(
+            await callback.message.edit_text(
                 text="Порядок установки VPN на android:\n\n"
                 "1. Откройте ссылку: https://drive.google.com/file/d/1MsrZp13yQUGQHRZIAJHYU6CdSQIwffel/view?usp=sharing \n" \
                 "2. Загрузите файл <u>v2rayNG_1.10.23.apk</u> с диска\n" \
@@ -177,7 +180,8 @@ async def install_vpn(callback: CallbackQuery, bot: Bot):
                 "Ресурсы:\n" \
                 f"<u>Конфиг</u>:\n <code>{user_config}</code>\n\n"
                 f"<u>Правила маршрутизации</u>:\n <code>{routing_rules}</code>",
-                parse_mode="HTML"
+                parse_mode="HTML",
+                reply_markup=markup.to_platforms
             )
 
         except Exception as e:
@@ -190,12 +194,13 @@ async def install_vpn(callback: CallbackQuery, bot: Bot):
 
             routing_rules = 'v2box://routes?multi=W3siZW5hYmxlZCI6dHJ1ZSwiaXAiOlsiZ2VvaXA6cnUiXSwibG9ja2VkIjpmYWxzZSwib3V0Ym91bmRUYWciOiJkaXJlY3QiLCJyZW1hcmtzIjoiZ2VvaXAgZGlyZWN0In0seyJkb21haW4iOlsiZ2Vvc2l0ZTpjYXRlZ29yeS1nb3YtcnUiLCJnZW9zaXRlOnlhbmRleCIsImdlb3NpdGU6dmsiLCJyZWdleHA6eG4tLSJdLCJlbmFibGVkIjp0cnVlLCJsb2NrZWQiOmZhbHNlLCJvdXRib3VuZFRhZyI6ImRpcmVjdCIsInJlbWFya3MiOiJnZW9zaXRlIGRpcmVjdCJ9LHsiZG9tYWluIjpbImdlb3NpdGU6Y2F0ZWdvcnktYWRzLWFsbCJdLCJlbmFibGVkIjp0cnVlLCJsb2NrZWQiOmZhbHNlLCJvdXRib3VuZFRhZyI6ImJsb2NrIiwicmVtYXJrcyI6ImFkcyBibG9jayJ9LHsiZW5hYmxlZCI6dHJ1ZSwiaXAiOlsiZ2VvaXA6cHJpdmF0ZSJdLCJsb2NrZWQiOmZhbHNlLCJvdXRib3VuZFRhZyI6ImRpcmVjdCIsInJlbWFya3MiOiJnZW9pcCBwcml2YXRlIn0seyJkb21haW4iOlsiZ2Vvc2l0ZTpwcml2YXRlIl0sImVuYWJsZWQiOnRydWUsImxvY2tlZCI6ZmFsc2UsIm91dGJvdW5kVGFnIjoiZGlyZWN0IiwicmVtYXJrcyI6Imdlb3NpdGUgcHJpdmF0ZSJ9XQ=='
 
-            await callback.message.answer(
+            await callback.message.edit_text(
                 text="Для установки настройки VPN\nСледуйте инструкциям отсюда: https://teletype.in/@kn1ver/install-ios \n\n" \
                 "Ресурсы:\n" \
                 f"<u>Конфиг</u>:\n <code>{user_config}</code>\n\n"
                 f"<u>Правила маршрутизации</u>:\n <code>{routing_rules}</code>",
-                parse_mode="HTML"
+                parse_mode="HTML",
+                reply_markup=markup.to_platforms
             )
 
         except Exception as e:
@@ -224,39 +229,66 @@ async def pay_vpn(callback: CallbackQuery, bot: Bot):
 
             await callback.message.answer(text="Оплата не доступна на данный момент.")
 
-            if callback.message.chat.id != 1616183086:
+            user_id = str(callback.message.chat.id)
+            if user_id != str(1616183086):
                 return
+
+            expires_old_ms = await db.get_user_data("chat_id", user_id, ["expires_at"])
+            expires_old_ms = expires_old_ms[0][0]
+            try:
+                expires_old_datetime = datetime.utcfromtimestamp(expires_old_ms/1000)
+                time_left = expires_old_datetime - datetime.utcnow()
+            except Exception as e: logger.error(e, exc_info=True)
+            logger.debug(time_left)
+
+            if expires_old_ms and time_left.total_seconds() >= 0:
+                if time_left  <= timedelta(days=7):
+                    await callback.message.answer(text="*Продление текущей подписки invoice*")
+
+                    expires_new = expires_old_ms + 31 * 24 * 3600 * 1000
+
+                    await db.set_user_data("chat_id", user_id, "bought_at", expires_old_ms)
+                    await db.set_user_data("chat_id", user_id, "expires_at", expires_new)
+
+                    msg = (
+                        "Подписка продлена. Спасибо за покупку!\n"
+                        f"Истекает: {utils.parse_expiry_time(expires_new, "%d.%m.%y")}\n")
+                    await callback.message.answer(text=msg)
+                else:
+                    await callback.message.edit_text(
+                        text="У вас уже есть действующая подписка\nПродлить её будет можно за 7 дней до окончания текущего периода",
+                        reply_markup=markup.to_main)
+            else:
+                await callback.message.edit_text("*Оплата новой подписки invoice*")
+
+                now = int(time.time()) * 1000
+                expires = now + 31 * 24 * 3600 * 1000
+
+                xui.reg_user_connection(user_id, expires)
+                xui_id = xui.get_user_data(user_id)["PC"]["id"]
+
+                await db.set_user_data("chat_id", user_id, "paid", 1)
+                await db.set_user_data("chat_id", user_id, "xui_id", str(xui_id))
+                await db.set_user_data("chat_id", user_id, "bought_at", now)
+                await db.set_user_data("chat_id", user_id, "expires_at", expires)
+
+                msg = (
+                    "Подписка подключена. Спасибо за покупку!\n"
+                    f"Истекает: {utils.parse_expiry_time(expires, "%d.%m.%y")}\n"
+                    'Перейдите в раздел "Установить VPN" для установки.')
+
+                await callback.message.answer(text=msg)
 
             # TODO что делаем после оплаты
             #
             # регаем юзера в xui (выполнено)
             # регаем юзера в sqlite (выполнено)
             #
-            # рассчитывать сроки списания и тп (частично) ->
-            # -> продумать продление подписки (в процессе)
+            # рассчитывать сроки списания и тп (выполнено) ->
+            # -> продумать продление подписки (выполнено)
             #
             # вынести все сообщения в отдельный файл
-            # сообщение в главном меню после "назад" отличается от того же после "/start"
-
-            user_id = str(callback.message.chat.id)
-            xui.reg_user_connection(user_id)
-            xui_id = xui.get_user_data(user_id)["PC"]["id"]
-
-            now = int(time.time())
-            expires = now + 31 * 24 * 3600
-
-            await db.set_user_data("chat_id", user_id, "paid", 1)
-            await db.set_user_data("chat_id", user_id, "xui_id", str(xui_id))
-            await db.set_user_data("chat_id", user_id, "bought_at", now)
-            await db.set_user_data("chat_id", user_id, "expires_at", expires)
-
-            msg = (
-                "Подписка подключена. Спасибо за покупку!"
-                f"Истекает: {expires}"
-                'Перейдите в раздел "Установить VPN" для установки.'
-            )
-
-            await callback.message.answer(text=msg)
+            # сообщение в главном меню после "назад" отличается от того же после "/start" (исправлено)
 
         except Exception as e:
             logger.error(e)
@@ -265,7 +297,7 @@ async def pay_vpn(callback: CallbackQuery, bot: Bot):
 async def help(callback: CallbackQuery, state: FSMContext):
     try:
 
-        await callback.message.answer(
+        await callback.message.edit_text(
             text="Как можно подробнее опишите проблему, с которой вы столкнулись, в ответном сообщении. Мы постараемся помочь вам как можно быстрее\n(Вы можете приложить до 1 фотографии/файла)",
             reply_markup=markup.to_main
         )
@@ -340,6 +372,8 @@ async def problem(message: Message, bot: Bot):
             await bot.send_message(
                 chat_id=1616183086,
                 text=msg)
+
+        await message.answer(text="Сообщение доставлено. В скором времени с вами свяжится поддержка.\nВы можете дополнить обращение, отправив детали сюда же")
 
     except Exception as e:
         logger.error(e, exc_info=True)
