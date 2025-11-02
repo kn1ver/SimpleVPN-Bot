@@ -37,3 +37,11 @@ platforms = InlineKeyboardMarkup(
         [InlineKeyboardButton(text='IOS', callback_data='install_ios')],
         [InlineKeyboardButton(text='Назад', callback_data='return_to_main')]
     ])
+
+def approve_payment(client_id: str) -> InlineKeyboardMarkup:
+    keyboard = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [InlineKeyboardButton(text='Подтвердить', callback_data=f'payment_approve_{client_id}')],
+        [InlineKeyboardButton(text='Отклонить', callback_data=f'payment_deny_{client_id}')]
+    ])
+    return keyboard

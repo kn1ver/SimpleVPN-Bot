@@ -14,11 +14,26 @@ from aiogram import F, Router, Bot
 from aiogram.filters import Command
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.types import Message, CallbackQuery, FSInputFile, LabeledPrice, InputMediaPhoto
 
 router_main = Router()
 class states (StatesGroup):
     problem = State()
+    payment = State()
+
+@router_main.message(Command('set_expiryTime'))
+async def set_expiryTime(message: Message, bot: Bot, state: FSMContext):
+    if message.chat.id == 1616183086:
+        msg = message.text
+        chat_id = msg.split(" ")[1]
+        expiryTime_days = msg.split(" ")[2]
+
+        expiryTime_ms = int(time.time()) * 1000 + int(expiryTime_days) * 24 * 3600 * 1000
+
+        await db.set_user_data("chat_id", chat_id, "expires_at", expiryTime_ms)
+        logger.debug(f"Для пользователя {chat_id} установлено expiryTime: {expiryTime_days} дней")
+    return
 
 @router_main.message(Command('start'))
 async def start (message: Message, bot: Bot, state: FSMContext):
@@ -39,9 +54,9 @@ async def start (message: Message, bot: Bot, state: FSMContext):
         except Exception as e:
             logger.error(f"Не удалось зарегистрировать пользователя {message.chat.id}: {e}")
 
-        # await bot.send_message(
-        #     chat_id=1616183086,
-        #     text=f'Пользователь {message.from_user.full_name} | @{message.from_user.username} | {message.chat.id} открыл бота')
+        await bot.send_message(
+            chat_id=1616183086,
+            text=f'Пользователь {message.from_user.full_name} | @{message.from_user.username} | {message.chat.id} открыл бота')
     except Exception as e:
         logger.error(e)
 
@@ -203,12 +218,11 @@ async def install_vpn(callback: CallbackQuery, bot: Bot):
                 reply_markup=markup.to_platforms
             )
 
-        except Exception as e:
-            logger.error(e, exc_info=True)
+        except Exception as e: logger.error(e, exc_info=True)
 
-@router_main.callback_query(lambda c: "pay" in c.data or "buy" in c.data)
-async def pay_vpn(callback: CallbackQuery, bot: Bot):
-    if "pay" in callback.data:
+@router_main.callback_query(lambda c: "pay_" in c.data or "buy" in c.data)
+async def pay_vpn(callback: CallbackQuery, bot: Bot, state: FSMContext):
+    if "pay_" in callback.data:
         try:
 
             msg = (
@@ -221,29 +235,83 @@ async def pay_vpn(callback: CallbackQuery, bot: Bot):
 
             await callback.message.edit_text(text=msg, parse_mode="HTML", reply_markup=markup.buy_vpn)
 
-        except Exception as e:
-            logger.error(e)
+        except Exception as e: logger.error(e, exc_info=1)
 
     elif "buy" in callback.data:
         try:
-
-            await callback.message.answer(text="Оплата не доступна на данный момент.")
-
             user_id = str(callback.message.chat.id)
-            if user_id != str(1616183086):
-                return
-
             expires_old_ms = await db.get_user_data("chat_id", user_id, ["expires_at"])
             expires_old_ms = expires_old_ms[0][0]
-            try:
+
+            if expires_old_ms:
                 expires_old_datetime = datetime.utcfromtimestamp(expires_old_ms/1000)
                 time_left = expires_old_datetime - datetime.utcnow()
-            except Exception as e: logger.error(e, exc_info=True)
-            logger.debug(time_left)
 
-            if expires_old_ms and time_left.total_seconds() >= 0:
-                if time_left  <= timedelta(days=7):
-                    await callback.message.answer(text="*Продление текущей подписки invoice*")
+            if time_left and time_left > timedelta(days=7):
+                await callback.message.edit_text(
+                    text="У вас уже есть действующая подписка\nПродлить её будет можно за 7 дней до окончания текущего периода",
+                    reply_markup=markup.to_main
+                )
+                return
+
+            msg = (
+            "Для оплаты подписки переведите деньги по следующим реквизитам:\n"
+
+            "    Номер карты: <code>2200700893574078</code>\n"
+            "    Номер телефона: <code>89397136806</code>\n"
+            "    Банк: ТБанк\n"
+
+            "    Сумма: 200 рублей\n"
+
+            "После оплаты отправьте скриншот о переводе в этот чат."
+            )
+
+            await callback.message.edit_text(
+                text=msg,
+                reply_markup=markup.to_main,
+                parse_mode="HTML"
+            )
+
+            await state.set_state(states.payment)
+            return
+    
+        except Exception as e: logger.error(e, exc_info=1)
+
+@router_main.callback_query(lambda c: "help" in c.data)
+async def help(callback: CallbackQuery, state: FSMContext):
+    try:
+
+        await callback.message.edit_text(
+            text="Как можно подробнее опишите проблему, с которой вы столкнулись, в ответном сообщении. Мы постараемся помочь вам как можно быстрее\n(Вы можете приложить до 1 фотографии/файла)",
+            reply_markup=markup.to_main
+        )
+        await state.set_state(states.problem)
+
+    except Exception as e: logger.error(e, exc_info=1)
+
+@router_main.callback_query(lambda c: "payment" in c.data)
+async def payment_action(callback: CallbackQuery, bot: Bot):
+    user_id = callback.data.split("_")[-1]
+
+    approve_markup = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='Подтверждено', callback_data='None')]])
+    deny_markup = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='Отклонено', callback_data='None')]])
+
+    try:
+        if "approve" in callback.data:
+            await callback.message.edit_reply_markup(reply_markup=approve_markup)
+            await bot.send_message(
+                chat_id=user_id,
+                text="Оплата подписки была подтверждена")
+
+            expires_old_ms = await db.get_user_data("chat_id", user_id, ["expires_at"])
+            expires_old_ms = expires_old_ms[0][0] if expires_old_ms else None
+
+            if expires_old_ms:
+                expires_old_datetime = datetime.utcfromtimestamp(expires_old_ms/1000)
+                time_left = expires_old_datetime - datetime.utcnow()
+
+                if time_left.total_seconds() >= 0:
+                    logger.debug("*Продление текущей подписки invoice*")
 
                     expires_new = expires_old_ms + 31 * 24 * 3600 * 1000
 
@@ -253,13 +321,10 @@ async def pay_vpn(callback: CallbackQuery, bot: Bot):
                     msg = (
                         "Подписка продлена. Спасибо за покупку!\n"
                         f"Истекает: {utils.parse_expiry_time(expires_new, "%d.%m.%y")}\n")
-                    await callback.message.answer(text=msg)
-                else:
-                    await callback.message.edit_text(
-                        text="У вас уже есть действующая подписка\nПродлить её будет можно за 7 дней до окончания текущего периода",
-                        reply_markup=markup.to_main)
-            else:
-                await callback.message.edit_text("*Оплата новой подписки invoice*")
+                    await bot.send_message(chat_id=user_id, text=msg)
+                
+            if not expires_old_ms or time_left.total_seconds() < 0:
+                logger.debug("*Оплата новой подписки invoice*")
 
                 now = int(time.time()) * 1000
                 expires = now + 31 * 24 * 3600 * 1000
@@ -277,34 +342,14 @@ async def pay_vpn(callback: CallbackQuery, bot: Bot):
                     f"Истекает: {utils.parse_expiry_time(expires, "%d.%m.%y")}\n"
                     'Перейдите в раздел "Установить VPN" для установки.')
 
-                await callback.message.answer(text=msg)
+                await bot.send_message(chat_id=user_id, text=msg)
 
-            # TODO что делаем после оплаты
-            #
-            # регаем юзера в xui (выполнено)
-            # регаем юзера в sqlite (выполнено)
-            #
-            # рассчитывать сроки списания и тп (выполнено) ->
-            # -> продумать продление подписки (выполнено)
-            #
-            # вынести все сообщения в отдельный файл
-            # сообщение в главном меню после "назад" отличается от того же после "/start" (исправлено)
+        elif "deny" in callback.data:
+            await callback.message.edit_reply_markup(reply_markup=deny_markup)
+            await bot.send_message(chat_id=user_id, text='Оплата подписки была отклонена. Вы можете спросить о причинах в разделе "Поддрежка"')
 
-        except Exception as e:
-            logger.error(e)
+    except Exception as e: logger.debug(e, exc_info=True)
 
-@router_main.callback_query(lambda c: "help" in c.data)
-async def help(callback: CallbackQuery, state: FSMContext):
-    try:
-
-        await callback.message.edit_text(
-            text="Как можно подробнее опишите проблему, с которой вы столкнулись, в ответном сообщении. Мы постараемся помочь вам как можно быстрее\n(Вы можете приложить до 1 фотографии/файла)",
-            reply_markup=markup.to_main
-        )
-        await state.set_state(states.problem)
-
-    except Exception as e:
-        logger.error(e)
 
 
 @router_main.message(states.problem)
@@ -375,5 +420,46 @@ async def problem(message: Message, bot: Bot):
 
         await message.answer(text="Сообщение доставлено. В скором времени с вами свяжится поддержка.\nВы можете дополнить обращение, отправив детали сюда же")
 
+    except Exception as e: logger.error(e, exc_info=True)
+
+@router_main.message(states.payment)
+async def approve_payment(message: Message, bot: Bot, state: FSMContext):
+    try:
+        photo = message.photo[-1]
     except Exception as e:
-        logger.error(e, exc_info=True)
+        photo = None
+    caption = message.caption if message.caption else ""
+    chat_id = str(message.chat.id)
+    admin_msg = f"{datetime.now()} | {chat_id} | @{message.from_user.username}\n"
+
+    if not photo:
+        await message.answer("В сообщении не обнаружено фото\nДля подтверждения оплаты отправьте скриншот из банка")
+        await state.set_state(states.payment)
+        return
+    else:
+        await message.answer("Подписка будет оплачена, когда администратор подтвердит перевод. Вы будете оповещены\nСпасибо, что выбрали SimpleVPN")
+
+        # сохраняем фото
+        photo_id = photo.file_id
+        photo_info = await bot.get_file(photo_id) # получаем само фото с серверов ТГ по id
+
+        downloaded_photo = await bot.download_file(photo_info.file_path) # сохраняем фото в переменную
+        photo_path = os.path.join("files", "temp", f"{chat_id}_{random.randint(0, 999)}.jpg") # определяем путь, куда сохранится фото
+
+        with open (photo_path, 'wb') as photo:
+            photo.write(downloaded_photo.read()) # сохраняем фото по указанному пути
+        logger.debug(f"изображение {chat_id} сохранено")
+
+        # отправляем сообщение админу
+        await bot.send_photo(
+            chat_id=1616183086,
+            photo=FSInputFile(photo_path),
+            caption=admin_msg + caption,
+            reply_markup=markup.approve_payment(chat_id))
+        logger.debug(f"изображение {chat_id} отправлено")
+
+        # удаляем фото
+        os.remove(photo_path)
+        logger.debug(f"изображение {chat_id} удалено") 
+
+    

@@ -30,6 +30,42 @@ def size_parser(num_bytes: int) -> str:
         size /= 1024
     return f"{size:.2f} PB"
 
+def time_parser(seconds: int) -> str:
+    """
+    Преобразует время в секундах в читаемый формат с точностью до часов.
+    Пример: 90000 → '1 день 1 час'
+    """
+
+    seconds = int(seconds)
+    
+    # Переводим секунды в дни и часы
+    days = seconds // 86400  # 60 * 60 * 24
+    hours = (seconds % 86400) // 3600
+
+    # Формируем человекочитаемую строку
+    parts = []
+    if days > 0:
+        if 10 < days % 100 < 20:
+            parts.append(f"{days} дней")
+        elif days % 10 == 1:
+            parts.append(f"{days} день")
+        elif 2 <= days % 10 <= 4:
+            parts.append(f"{days} дня")
+        else:
+            parts.append(f"{days} дней")
+
+    if hours > 0 or not parts:
+        if 10 < hours % 100 < 20:
+            parts.append(f"{hours} часов")
+        elif hours % 10 == 1:
+            parts.append(f"{hours} час")
+        elif 2 <= hours % 10 <= 4:
+            parts.append(f"{hours} часа")
+        else:
+            parts.append(f"{hours} часов")
+
+    return " ".join(parts)
+
 def parse_expiry_time(expiry_time: int, format: str | None="%Y-%m-%d %H:%M:%S") -> str:
     """
     Преобразует expiryTime (в миллисекундах) в удобную дату/время.
