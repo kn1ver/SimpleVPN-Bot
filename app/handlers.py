@@ -76,7 +76,7 @@ async def profile(callback: CallbackQuery, bot: Bot):
             f"💡Активен: {'✅ Да' if client["PC"]['enable'] else '🔴 Нет'}\n"
             f"🌐 Статус соединения: {'🟢 Онлайн' if client["PC"]['online'] else '🔴 Офлайн'}\n"
             f"🔼 Загрузка: {client["PC"]["up"]}\n🔽 Скачивание: {client["PC"]["down"]}\n"
-            f"📅 Окончание через: {client["PC"]["expiryTime"]}\n\n"
+            f"📅 Окончание: {client["PC"]["expiryTime"]}\n\n"
         ) if client["PC"] else ""
 
         msg_android = (
@@ -84,7 +84,7 @@ async def profile(callback: CallbackQuery, bot: Bot):
             f"💡Активен: {'✅ Да' if client["Android"]['enable'] else '🔴 Нет'}\n"
             f"🌐 Статус соединения: {'🟢 Онлайн' if client["Android"]['online'] else '🔴 Офлайн'}\n"
             f"🔼 Загрузка: {client["Android"]["up"]}\n🔽 Скачивание: {client["Android"]["down"]}\n"
-            f"📅 Окончание через: {client["Android"]["expiryTime"]}\n\n"
+            f"📅 Окончание: {client["Android"]["expiryTime"]}\n\n"
         ) if client["Android"] else ""
 
         msg_ios = (
@@ -92,7 +92,7 @@ async def profile(callback: CallbackQuery, bot: Bot):
             f"💡Активен: {'✅ Да' if client["IOS"]['enable'] else '🔴 Нет'}\n"
             f"🌐 Статус соединения: {'🟢 Онлайн' if client["IOS"]['online'] else '🔴 Офлайн'}\n"
             f"🔼 Загрузка: {client["IOS"]["up"]}\n🔽 Скачивание: {client["IOS"]["down"]}\n"
-            f"📅 Окончание через: {client["IOS"]["expiryTime"]}\n\n"
+            f"📅 Окончание: {client["IOS"]["expiryTime"]}\n\n"
         ) if client["IOS"] else ""
 
         msg = f"Ваши устройства:\n\n{msg_pc + msg_android + msg_ios}"
@@ -241,11 +241,13 @@ async def pay_vpn(callback: CallbackQuery, bot: Bot, state: FSMContext):
         try:
             user_id = str(callback.message.chat.id)
             expires_old_ms = await db.get_user_data("chat_id", user_id, ["expires_at"])
-            expires_old_ms = expires_old_ms[0][0]
+            expires_old_ms = expires_old_ms[0][0] if expires_old_ms else None
 
             if expires_old_ms:
                 expires_old_datetime = datetime.utcfromtimestamp(expires_old_ms/1000)
                 time_left = expires_old_datetime - datetime.utcnow()
+            else:
+                time_left = None
 
             if time_left and time_left > timedelta(days=7):
                 await callback.message.edit_text(

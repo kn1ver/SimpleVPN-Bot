@@ -20,7 +20,7 @@ async def notify_service(bot: Bot):
 
 async def main():
     try:
-        # asyncio.create_task(notify_service(bot))
+        asyncio.create_task(notify_service(bot))
         disp.include_router(router_main)
         await disp.start_polling(bot, polling_timeout=60)
     except Exception as e:
