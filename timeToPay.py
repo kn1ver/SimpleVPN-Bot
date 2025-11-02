@@ -25,7 +25,6 @@ async def db_search():
         await cursor.execute(query, params)
         data = await cursor.fetchall()
 
-    logger.debug(data)
     return data
 
 async def get_user_data(filter: str, filter_value: str, columns: list) -> list:
@@ -41,7 +40,6 @@ async def get_user_data(filter: str, filter_value: str, columns: list) -> list:
         await cursor.execute(query)
         user_data = await cursor.fetchall()
 
-    logger.debug(user_data)
     return user_data
 
 async def notify_user(chat_id: str, bot: Bot):
@@ -57,4 +55,19 @@ async def notify_user(chat_id: str, bot: Bot):
         text=f'❗️ До истечения подписки осталось: {time_for_end}\nВы можете продлить её с помощью кнопки снизу или в разделе "Оплатить VPN"',
         reply_markup=markup.pay_vpn
     )
+
+async def set_paid_0():
+    """
+    Сбрасывает поле paid = 0 у всех пользователей,
+    чья подписка истекла (expires_at < текущее время).
+    """
+    now = int(time.time()) * 1000
+    query = "UPDATE users SET paid = 0 WHERE expires_at < ?"
+
+    async with aiosqlite.connect("bot.sql") as connection:
+        async with connection.execute(query, (now,)) as cursor:
+            await connection.commit()
+            updated_rows = cursor.rowcount  # сколько строк изменено
+
+    return updated_rows
 

@@ -12,10 +12,11 @@ disp = aiogram.Dispatcher()
 
 async def notify_service(bot: Bot):
     while True:
-            chat_ids = await db_search()
-            for (chat_id,) in chat_ids:
-                await notify_user(str(chat_id), bot)
-            await asyncio.sleep(3600*24)
+        await set_paid_0()
+        chat_ids = await db_search()
+        for (chat_id,) in chat_ids:
+            await notify_user(str(chat_id), bot)
+        await asyncio.sleep(3600*24)
 
 async def main():
     try:
