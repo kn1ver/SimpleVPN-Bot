@@ -5,7 +5,7 @@ from config import BOT_TOKEN
 from utils.logger import logger
 from app.handlers import router_main
 
-from timeToPay import *
+from utils.timeToPay import *
 
 bot = aiogram.Bot(token=BOT_TOKEN)
 disp = aiogram.Dispatcher()

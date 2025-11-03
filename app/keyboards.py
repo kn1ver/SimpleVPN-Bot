@@ -4,7 +4,7 @@ start = InlineKeyboardMarkup(
     inline_keyboard=[
         [InlineKeyboardButton(text='Установить VPN', callback_data='install_vpn')],
         [InlineKeyboardButton(text='Оплатить VPN', callback_data='pay_vpn')],
-        [InlineKeyboardButton(text='VPN не работает', callback_data='help')],
+        [InlineKeyboardButton(text='Поддержка', callback_data='help')],
         [InlineKeyboardButton(text='Профиль', callback_data='profile')]
     ],  input_field_placeholder='Выберите пункт',)
 
