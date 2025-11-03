@@ -1,1 +1,0 @@
-# SimpleVPN-Bot
