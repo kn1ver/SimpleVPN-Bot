@@ -107,3 +107,68 @@ def reg_user_connection(user_id: str, expiry_time: int):
 
     return True
 
+def update_client_expiry(inbound_id: int, chat_id: str, new_expiry_days: int, logger=None):
+    """
+    Обновляет expiryTime пользователя в x-ui панели
+    :param inbound_id: ID инбаунда
+    :param chat_id: chat_id клиента из бота
+    :param new_expiry_days: через сколько дней истекает подписка
+    """
+    xui_login()
+
+    # Получаем inbound по ID
+    r = session.get(f"{XUI_URL}/xui/API/inbounds/get/{inbound_id}")
+    r.raise_for_status()
+    inbound_data = r.json()
+
+    if not inbound_data.get("success"):
+        raise Exception(f"Не удалось получить inbound {inbound_id}: {r.text}")
+
+    settings = json.loads(inbound_data["obj"]["settings"])
+    clients = settings.get("clients", [])
+    platforms = ["PC", "Android", "IOS"]
+
+    # Ищем нужного клиента
+    for platform in platforms:
+        target = None
+        for c in clients:
+            if c.get("email") == f"{chat_id} {platform}":
+                target = c
+                break
+
+        if not target:
+            raise Exception(f"❌ Клиент с email '{chat_id}' не найден в inbound {inbound_id}")
+
+        # Обновляем дату истечения
+        new_expiry_time = (int(time.time()) + new_expiry_days * 24 * 3600) * 1000
+        target["expiryTime"] = new_expiry_time
+
+        # Формируем JSON для обновления
+        payload = {
+            "id": inbound_id,
+            "settings": json.dumps({
+                "clients": [target]
+            }) # XUI ждёт объект клиента, не весь inbound
+        }
+
+        try:
+            logger.debug(payload)
+        except Exception as e:
+            pass
+
+        client_id = target["id"]
+        r = session.post(f"{XUI_URL}/xui/API/inbounds/updateClient/{client_id}", json=payload)
+        r.raise_for_status()
+
+        if r.status_code == 200:
+            if logger:
+                logger.debug(f"Успешно обновлён expiryTime клиента '{chat_id} {platform}' до {time.ctime(new_expiry_time/1000)}")
+            else:
+                print(f"Успешно обновлён expiryTime клиента '{chat_id} {platform}' до {time.ctime(new_expiry_time/1000)}")
+        else:
+            if logger:
+                logger.error(f"Ошибка обновления expiryTime: {r.text}")
+            else:
+                print(f"Ошибка обновления expiryTime: {r.text}")
+
+    return True

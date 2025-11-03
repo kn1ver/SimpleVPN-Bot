@@ -109,7 +109,7 @@ async def get_archive(user_id: str, bot: Bot, msg_id: int):
     randint = random.randint(0, 1000)
     msg = "С порядоком установки VPN на компьютер вы можете ознакомиться по этой ссылке:\n" \
             "https://teletype.in/@kn1ver/install-pc \n\n" \
-            f"Ваш ключ доступа: <code>{xui_id}</code>\n\n Архивы отправляются ▯▯▯▯▯▯▯▯▯▯"
+            f"<b>Ваш ключ активации</b>: <code>{xui_id}</code>\n\n Архивы отправляются ▯▯▯▯▯▯▯▯▯▯"
 
     src = FILES_DIR / "nekoray"
     dst = FILES_DIR / "temp" / f"nekoray_{user_id}_{randint}"

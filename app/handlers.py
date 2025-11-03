@@ -32,6 +32,7 @@ async def set_expiryTime(message: Message, bot: Bot, state: FSMContext):
         expiryTime_ms = int(time.time()) * 1000 + int(expiryTime_days) * 24 * 3600 * 1000
 
         await db.set_user_data("chat_id", chat_id, "expires_at", expiryTime_ms)
+        xui.update_client_expiry(1, chat_id, int(expiryTime_days),logger)
         logger.debug(f"Для пользователя {chat_id} установлено expiryTime: {expiryTime_days} дней")
     return
 
@@ -149,7 +150,7 @@ async def install_vpn(callback: CallbackQuery, bot: Bot):
             xui_id = xui_data["PC"]["id"]
             msg = "С порядоком установки VPN на компьютер вы можете ознакомиться по этой ссылке:\n" \
                     "https://teletype.in/@kn1ver/install-pc \n\n" \
-                    f"Ваш ключ доступа: <code>{xui_id}</code>\n\n Архивы отправляются ▯▯▯▯▯▯▯▯▯▯"
+                    f"<b>Ваш ключ активации</b>: <code>{xui_id}</code>\n\n Архивы отправляются ▯▯▯▯▯▯▯▯▯▯"
 
             msg_id = await callback.message.edit_text(
                 text=msg,
@@ -319,6 +320,7 @@ async def payment_action(callback: CallbackQuery, bot: Bot):
 
                     await db.set_user_data("chat_id", user_id, "bought_at", expires_old_ms)
                     await db.set_user_data("chat_id", user_id, "expires_at", expires_new)
+                    xui.update_client_expiry(1, user_id, 31, logger)
 
                     msg = (
                         "Подписка продлена. Спасибо за покупку!\n"
