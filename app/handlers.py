@@ -25,17 +25,20 @@ class states (StatesGroup):
     payment = State()
 
 @router_main.message(Command('key'))
-async def command_key(message: Message):
-    xui_data = xui.get_user_data(str(user_id))
-    xui_id = xui_data["PC"]["id"] if xui_data else msg_text["paid_0"]
+async def command_key(message: Message, state: FSMContext):
+    await state.clear()
+    xui_data = xui.get_user_data(str(message.chat.id))
+    xui_id = xui_data["PC"]["id"] if xui_data["PC"]["enable"] else msg_text["paid_0"]
     await message.answer(
-        text=f"<spoiler>{xui_id}</spoiler>",
+        text=f'Ваш ключ активации:\n<span class="tg-spoiler">{xui_id}</span>',
         parse_mode="HTML"
     )
 
 @router_main.message(Command('profile'))
-async def command_profile(message: Message):
+async def command_profile(message: Message, state: FSMContext):
     try:
+        await state.clear()
+
         user_id = message.chat.id
         client = xui.get_user_data(str(user_id))
         logger.debug(f"profile | xui.get_user_data:\n{client}\n\n")
@@ -45,6 +48,7 @@ async def command_profile(message: Message):
                 text=msg_text["paid_0"],
                 reply_markup=markup.pay_vpn
             )
+            return
 
         platform_messages = []
         platforms = ["PC", "Android", "IOS"]
@@ -72,10 +76,10 @@ async def command_profile(message: Message):
             logger.error(e, exc_info=1)
 
 @router_main.message(Command('support'))
-async def command_support(message: Message):
+async def command_support(message: Message, state: FSMContext):
     try:
-
-        await callback.message.edit_text(
+        await state.clear()
+        await message.answer(
             text=msg_text["help"],
             reply_markup=markup.to_main
         )
@@ -85,6 +89,7 @@ async def command_support(message: Message):
 
 @router_main.message(Command('set_expiryTime'))
 async def set_expiryTime(message: Message, bot: Bot, state: FSMContext):
+    await state.clear()
     if message.chat.id == 1616183086:
         msg = message.text
         chat_id = msg.split(" ")[1]
@@ -94,6 +99,7 @@ async def set_expiryTime(message: Message, bot: Bot, state: FSMContext):
 
         await db.set_user_data("chat_id", chat_id, "expires_at", expiryTime_ms)
         xui.update_client_expiry(1, chat_id, int(expiryTime_days),logger)
+        await message.answer(f"Для пользователя {chat_id} установлено expiryTime: {expiryTime_days} дней")
         logger.debug(f"Для пользователя {chat_id} установлено expiryTime: {expiryTime_days} дней")
     return
 
