@@ -1,9 +1,11 @@
-import app.keyboards as markup
 import os
 import random
 import shutil
 import time
 
+import app.keyboards as markup
+from config import MESSAGES as msg_text
+from config import ROUTING_RULES as routing_rules
 from utils.logger import logger
 from utils import xui
 from utils import sqlite as db
@@ -39,209 +41,189 @@ async def set_expiryTime(message: Message, bot: Bot, state: FSMContext):
 @router_main.message(Command('start'))
 async def start (message: Message, bot: Bot, state: FSMContext):
     try:
+        msg = msg_text["main_menu"]
+        user_id = message.chat.id
+        
         await state.clear()
         await message.answer(
-            text='🚀 Добро пожаловать в SimpleVPN!\nБезопасный и быстрый интернет без отслеживания и скрытых списаний',
+            text=msg,
             reply_markup=markup.start
-            )
+        )
 
+        await db.create_db()
         try:
-            await db.create_db()
-        except:
-            pass
-
-        try:
-            await db.reg_user(str(message.chat.id))
+            await db.reg_user(str(user_id))
         except Exception as e:
-            logger.error(f"Не удалось зарегистрировать пользователя {message.chat.id}: {e}")
+            if not ("UNIQUE constraint failed" in str(e)):
+                logger.error(f"Не удалось зарегистрировать пользователя {user_id}: {e}", exc_info=1)
 
         await bot.send_message(
             chat_id=1616183086,
-            text=f'Пользователь {message.from_user.full_name} | @{message.from_user.username} | {message.chat.id} открыл бота')
-    except Exception as e:
-        logger.error(e)
+            text=f'Пользователь {message.from_user.full_name} | @{message.from_user.username} | {user_id} открыл бота'
+        )
+
+    except Exception as e: logger.error(e, exc_info=1)
 
 @router_main.callback_query(lambda c: "profile" in c.data)
 async def profile(callback: CallbackQuery, bot: Bot):
     try:
-        client = xui.get_user_data(str(callback.message.chat.id))
-        logger.debug(client)
+        user_id = callback.message.chat.id
+        client = xui.get_user_data(str(user_id))
+        logger.debug(f"profile | xui.get_user_data:\n{client}\n\n")
 
         if not client or not client["PC"]["enable"]:
             await callback.message.edit_text(
-                text="Похоже, Вы еще не подключены к нашему VPN или не оплатили текущий период",
-                reply_markup=markup.pay_vpn)
+                text=msg_text["paid_0"],
+                reply_markup=markup.pay_vpn
+            )
 
-        msg_pc = (
-            f"<b>   PC\n</b>"
-            f"💡Активен: {'✅ Да' if client["PC"]['enable'] else '🔴 Нет'}\n"
-            f"🌐 Статус соединения: {'🟢 Онлайн' if client["PC"]['online'] else '🔴 Офлайн'}\n"
-            f"🔼 Загрузка: {client["PC"]["up"]}\n🔽 Скачивание: {client["PC"]["down"]}\n"
-            f"📅 Окончание: {client["PC"]["expiryTime"]}\n\n"
-        ) if client["PC"] else ""
+        platform_messages = []
+        platforms = ["PC", "Android", "IOS"]
+        for platform in platforms:
+            platform_message = msg_text["profile_platform"].format(
+                platform=platform,
+                enable='✅ Да' if client[platform]['enable'] else '🔴 Нет',
+                online='🟢 Онлайн' if client[platform]['online'] else '🔴 Офлайн',
+                down=client[platform]['down'],
+                up=client[platform]['up'],
+                expiry=client[platform]['expiryTime']
+            ) if client[platform] else ""
+            platform_messages.append(platform_message)
 
-        msg_android = (
-            f"<b>   Andoid\n</b>"
-            f"💡Активен: {'✅ Да' if client["Android"]['enable'] else '🔴 Нет'}\n"
-            f"🌐 Статус соединения: {'🟢 Онлайн' if client["Android"]['online'] else '🔴 Офлайн'}\n"
-            f"🔼 Загрузка: {client["Android"]["up"]}\n🔽 Скачивание: {client["Android"]["down"]}\n"
-            f"📅 Окончание: {client["Android"]["expiryTime"]}\n\n"
-        ) if client["Android"] else ""
-
-        msg_ios = (
-            f"<b>   IOS\n</b>"
-            f"💡Активен: {'✅ Да' if client["IOS"]['enable'] else '🔴 Нет'}\n"
-            f"🌐 Статус соединения: {'🟢 Онлайн' if client["IOS"]['online'] else '🔴 Офлайн'}\n"
-            f"🔼 Загрузка: {client["IOS"]["up"]}\n🔽 Скачивание: {client["IOS"]["down"]}\n"
-            f"📅 Окончание: {client["IOS"]["expiryTime"]}\n\n"
-        ) if client["IOS"] else ""
-
-        msg = f"Ваши устройства:\n\n{msg_pc + msg_android + msg_ios}"
+        msg = f"Ваши устройства:\n\n{"".join(platform_messages)}"
 
         await callback.message.edit_text(
             text=msg,
             reply_markup=markup.to_main,
             parse_mode="HTML"
         )
+
     except Exception as e:
-        logger.error(e, exc_info=True)
+        if e != KeyError:
+            logger.error(e, exc_info=1)
 
 @router_main.callback_query(lambda c: "return" in c.data)
 async def return_to(callback: CallbackQuery, bot: Bot, state: FSMContext):
-    await state.clear()
     try:
+        await state.clear()
+
         if "main" in callback.data:
-            await callback.message.edit_text(
-                text='🚀 Добро пожаловать в SimpleVPN!\nБезопасный и быстрый интернет без отслеживания и скрытых списаний',
-                reply_markup=markup.start)
+            msg = msg_text["main_menu"]
+            reply_mk = markup.start
 
         elif "platforms" in callback.data:
-            await callback.message.edit_text(text='На какую платформу Вы хотите установить VPN?', reply_markup=markup.platforms)
+            msg = msg_text["platforms"]
+            reply_mk = markup.platforms
 
-    except Exception as e:
-        logger.error(e)
+        await callback.message.edit_text(
+            text=msg,
+            reply_markup=reply_mk
+        )
+
+    except Exception as e: logger.error(e, exc_info=1)
 
 @router_main.callback_query(lambda c: "install" in c.data)
 async def install_vpn(callback: CallbackQuery, bot: Bot):
+    try:
+        user_id = callback.message.chat.id
 
-    chat_id = str(callback.message.chat.id)
-
-    if "vpn" in callback.data:
-        try:
-
-            user_paid = await db.get_user_data("chat_id", str(chat_id), ["paid"])
+        if "vpn" in callback.data:
+            user_paid = await db.get_user_data("chat_id", str(user_id), ["paid"])
 
             if not user_paid[0][0]:
                 await callback.message.edit_text(
-                    text="Вы еще не приобрели доступ к VPN или оплата просрочена",
+                    text=msg_text["paid_0"],
                     reply_markup=markup.pay_vpn
                 )
                 return
 
             await callback.message.edit_text(
-                text="На какую платформу Вы хотите установить VPN?",
-                reply_markup=markup.platforms)
-        except Exception as e:
-            logger.error(e)
+                text=msg_text["platforms"],
+                reply_markup=markup.platforms
+            )
 
-    elif "pc" in callback.data:
-        try:
-            xui_data = xui.get_user_data(chat_id)
+        elif "pc" in callback.data:
+            xui_data = xui.get_user_data(str(user_id))
             xui_id = xui_data["PC"]["id"]
-            msg = "С порядоком установки VPN на компьютер вы можете ознакомиться по этой ссылке:\n" \
-                    "https://teletype.in/@kn1ver/install-pc \n\n" \
-                    f"<b>Ваш ключ активации</b>: <code>{xui_id}</code>\n\n Архивы отправляются ▯▯▯▯▯▯▯▯▯▯"
+            msg = msg_text["platforms_pc"].format(xui_id=xui_id)
 
             msg_id = await callback.message.edit_text(
                 text=msg,
                 reply_markup=markup.to_platforms,
-                parse_mode="HTML")
+                parse_mode="HTML"
+            )
 
-            archive, dll, dst, archive_path = await utils.get_archive(chat_id, bot, int(msg_id.message_id))
+            archive, dll, dst, archive_path = await utils.get_archive(str(user_id), bot, int(msg_id.message_id))
             launcher = FSInputFile("files/first_launch.exe")
 
             await callback.message.answer_document(launcher)
             await callback.message.answer_document(archive)
             msg = msg[:-10] + "▮▮▮▮▮▮▮▯▯▯"
-            await callback.message.edit_text(text=msg, parse_mode="HTML")
+
+            await callback.message.edit_text(
+                text=msg,
+                parse_mode="HTML"
+            )
 
             await callback.message.answer_document(dll)
             msg = msg[:-10] + "▮▮▮▮▮▮▮▮▮▮"
-            await callback.message.edit_text(text=msg, parse_mode="HTML", reply_markup=markup.to_platforms)
 
-            logger.debug("Архивы отправлены")
+            await callback.message.edit_text(
+                text=msg,
+                parse_mode="HTML",
+                reply_markup=markup.to_platforms
+            )
+
+            logger.debug(f"install_vpn -> pc | {user_id}: Архивы отправлены")
 
             shutil.rmtree(dst, ignore_errors=True)
             if archive_path.exists():
                 os.remove(archive_path)
-            logger.debug("Временные архивы удалены")
+            logger.debug(f"install_vpn -> pc | {user_id}: Временные архивы удалены")
 
-
-        except Exception as e:
-            logger.error(e, exc_info=True)
-
-    elif "android" in callback.data:
-        try:
-
-            user_config = await utils.get_link(chat_id, "Android")
-
-            routing_rules = '[{"enabled":true,"ip":["geoip:ru"],"looked":false,"outboundTag":"direct","remarks":"geoip direct"},{"domain":["geosite:category-gov-ru","geosite:yandex","geosite:vk","regexp:xn--"],"enabled":true,"looked":false,"outboundTag":"direct","remarks":"geosite direct"},{"domain":["geosite:category-ads-all"],"enabled":true,"looked":false,"outboundTag":"block","remarks":"ads block"},{"enabled":true,"ip":["geoip:private"],"looked":false,"outboundTag":"direct","remarks":"geoip private"},{"domain":["geosite:private"],"enabled":true,"looked":false,"outboundTag":"direct","remarks":"geosite private"}]'
+        elif "android" in callback.data:
+            user_config = await utils.get_link(str(user_id), "Android")
+            msg = msg_text["platforms_adnroid"].format(
+                user_config=user_config,
+                routing_rules=routing_rules["adnroid"]
+            )
 
             await callback.message.edit_text(
-                text="Порядок установки VPN на android:\n\n"
-                "1. Откройте ссылку: https://drive.google.com/file/d/1MsrZp13yQUGQHRZIAJHYU6CdSQIwffel/view?usp=sharing \n" \
-                "2. Загрузите файл <u>v2rayNG_1.10.23.apk</u> с диска\n" \
-                "3. Откройте этот файл и установите приложение\n" \
-                "4. Следуйте инструкциям отсюда: https://teletype.in/@kn1ver/Android-install \n\n" \
-                "Ресурсы:\n" \
-                f"<u>Конфиг</u>:\n <code>{user_config}</code>\n\n"
-                f"<u>Правила маршрутизации</u>:\n <code>{routing_rules}</code>",
+                text=msg,
                 parse_mode="HTML",
                 reply_markup=markup.to_platforms
             )
 
-        except Exception as e:
-            logger.error(e, exc_info=True)
-
-    elif "ios" in callback.data:
-        try:
-
-            user_config = await utils.get_link(chat_id, "IOS")
-
-            routing_rules = 'v2box://routes?multi=W3siZW5hYmxlZCI6dHJ1ZSwiaXAiOlsiZ2VvaXA6cnUiXSwibG9ja2VkIjpmYWxzZSwib3V0Ym91bmRUYWciOiJkaXJlY3QiLCJyZW1hcmtzIjoiZ2VvaXAgZGlyZWN0In0seyJkb21haW4iOlsiZ2Vvc2l0ZTpjYXRlZ29yeS1nb3YtcnUiLCJnZW9zaXRlOnlhbmRleCIsImdlb3NpdGU6dmsiLCJyZWdleHA6eG4tLSJdLCJlbmFibGVkIjp0cnVlLCJsb2NrZWQiOmZhbHNlLCJvdXRib3VuZFRhZyI6ImRpcmVjdCIsInJlbWFya3MiOiJnZW9zaXRlIGRpcmVjdCJ9LHsiZG9tYWluIjpbImdlb3NpdGU6Y2F0ZWdvcnktYWRzLWFsbCJdLCJlbmFibGVkIjp0cnVlLCJsb2NrZWQiOmZhbHNlLCJvdXRib3VuZFRhZyI6ImJsb2NrIiwicmVtYXJrcyI6ImFkcyBibG9jayJ9LHsiZW5hYmxlZCI6dHJ1ZSwiaXAiOlsiZ2VvaXA6cHJpdmF0ZSJdLCJsb2NrZWQiOmZhbHNlLCJvdXRib3VuZFRhZyI6ImRpcmVjdCIsInJlbWFya3MiOiJnZW9pcCBwcml2YXRlIn0seyJkb21haW4iOlsiZ2Vvc2l0ZTpwcml2YXRlIl0sImVuYWJsZWQiOnRydWUsImxvY2tlZCI6ZmFsc2UsIm91dGJvdW5kVGFnIjoiZGlyZWN0IiwicmVtYXJrcyI6Imdlb3NpdGUgcHJpdmF0ZSJ9XQ=='
+        elif "ios" in callback.data:
+            user_config = await utils.get_link(str(user_id), "IOS")
+            msg = msg_text["platforms_ios"].format(
+                user_config=user_config,
+                routing_rules=routing_rules["ios"]
+            )
 
             await callback.message.edit_text(
-                text="Для установки настройки VPN\nСледуйте инструкциям отсюда: https://teletype.in/@kn1ver/install-ios \n\n" \
-                "Ресурсы:\n" \
-                f"<u>Конфиг</u>:\n <code>{user_config}</code>\n\n"
-                f"<u>Правила маршрутизации</u>:\n <code>{routing_rules}</code>",
+                text=msg,
                 parse_mode="HTML",
                 reply_markup=markup.to_platforms
             )
-
-        except Exception as e: logger.error(e, exc_info=True)
+    
+    except Exception as e: logger.error(e, exc_info=1)
 
 @router_main.callback_query(lambda c: "pay_" in c.data or "buy" in c.data)
 async def pay_vpn(callback: CallbackQuery, bot: Bot, state: FSMContext):
-    if "pay_" in callback.data:
-        try:
+    try:
+        user_id = callback.message.chat.id
+        if "pay_" in callback.data:
+            msg = msg_text["pay_conditions"]
 
-            msg = (
-                "🌐 После оплаты вы получаете полный доступ к <b>SimpleVPN</b>.\n" \
-                "Установить его можно на <b>Android, ПК и iOS</b> — по одному устройству для каждой платформы.\n\n" \
-                "💳 Стоимость подписки всего <i><b>200</b>руб за <b>31</b> день</i>\n" \
-                "Мы честно напомним о платеже за <b>7 и 3 дня</b>, чтобы вы успели решить, остаёмся ли вместе дальше.\n" \
-                "✨ Никаких скрытых списаний"
+            await callback.message.edit_text(
+                text=msg,
+                parse_mode="HTML",
+                reply_markup=markup.buy_vpn
             )
 
-            await callback.message.edit_text(text=msg, parse_mode="HTML", reply_markup=markup.buy_vpn)
-
-        except Exception as e: logger.error(e, exc_info=1)
-
-    elif "buy" in callback.data:
-        try:
-            user_id = str(callback.message.chat.id)
-            expires_old_ms = await db.get_user_data("chat_id", user_id, ["expires_at"])
+        elif "buy" in callback.data:
+            expires_old_ms = await db.get_user_data("chat_id", str(user_id), ["expires_at"])
             expires_old_ms = expires_old_ms[0][0] if expires_old_ms else None
 
             if expires_old_ms:
@@ -252,40 +234,30 @@ async def pay_vpn(callback: CallbackQuery, bot: Bot, state: FSMContext):
 
             if time_left and time_left > timedelta(days=7):
                 await callback.message.edit_text(
-                    text="У вас уже есть действующая подписка\nПродлить её будет можно за 7 дней до окончания текущего периода",
+                    text=msg_text["sub_already_connected"],
                     reply_markup=markup.to_main
                 )
                 return
 
-            msg = (
-            "Для оплаты подписки переведите деньги по следующим реквизитам:\n"
-
-            "    Номер карты: <code>2200700893574078</code>\n"
-            "    Номер телефона: <code>89397136806</code>\n"
-            "    Банк: ТБанк\n"
-
-            "    Сумма: 200 рублей\n"
-
-            "После оплаты отправьте скриншот о переводе в этот чат."
-            )
+            msg = msg_text["pay_details"]
 
             await callback.message.edit_text(
                 text=msg,
-                reply_markup=markup.to_main,
-                parse_mode="HTML"
+                parse_mode="HTML",
+                reply_markup=markup.to_main
             )
 
             await state.set_state(states.payment)
             return
     
-        except Exception as e: logger.error(e, exc_info=1)
+    except Exception as e: logger.error(e, exc_info=1)
 
 @router_main.callback_query(lambda c: "help" in c.data)
 async def help(callback: CallbackQuery, state: FSMContext):
     try:
 
         await callback.message.edit_text(
-            text="Как можно подробнее опишите проблему, с которой вы столкнулись, в ответном сообщении. Мы постараемся помочь вам как можно быстрее\n(Вы можете приложить до 1 фотографии/файла)",
+            text=msg_text["help"],
             reply_markup=markup.to_main
         )
         await state.set_state(states.problem)
@@ -304,7 +276,8 @@ async def payment_action(callback: CallbackQuery, bot: Bot):
             await callback.message.edit_reply_markup(reply_markup=approve_markup)
             await bot.send_message(
                 chat_id=user_id,
-                text="Оплата подписки была подтверждена")
+                text=msg_text["payment_approved"]
+            )
 
             expires_old_ms = await db.get_user_data("chat_id", user_id, ["expires_at"])
             expires_old_ms = expires_old_ms[0][0] if expires_old_ms else None
@@ -314,7 +287,7 @@ async def payment_action(callback: CallbackQuery, bot: Bot):
                 time_left = expires_old_datetime - datetime.utcnow()
 
                 if time_left.total_seconds() >= 0:
-                    logger.debug("*Продление текущей подписки invoice*")
+                    logger.debug(f"payment_action -> approve | {user_id}: Продление текущей подписки")
 
                     expires_new = expires_old_ms + 31 * 24 * 3600 * 1000
 
@@ -322,52 +295,57 @@ async def payment_action(callback: CallbackQuery, bot: Bot):
                     await db.set_user_data("chat_id", user_id, "expires_at", expires_new)
                     xui.update_client_expiry(1, user_id, 31, logger)
 
-                    msg = (
-                        "Подписка продлена. Спасибо за покупку!\n"
-                        f"Истекает: {utils.parse_expiry_time(expires_new, "%d.%m.%y")}\n")
-                    await bot.send_message(chat_id=user_id, text=msg)
+                    msg = msg_text["sub_renewed"].format(
+                        expires_at=utils.parse_expiry_time(expires_new, "%d.%m.%y")
+                    )
+                    await bot.send_message(
+                        chat_id=user_id,
+                        text=msg
+                    )
                 
             if not expires_old_ms or time_left.total_seconds() < 0:
-                logger.debug("*Оплата новой подписки invoice*")
+                logger.debug(f"payment_action -> approve | {user_id}: Оплата новой подписки")
 
                 now = int(time.time()) * 1000
-                expires = now + 31 * 24 * 3600 * 1000
+                expires_at = now + 31 * 24 * 3600 * 1000
 
-                xui.reg_user_connection(user_id, expires)
+                xui.reg_user_connection(user_id, expires_at)
                 xui_id = xui.get_user_data(user_id)["PC"]["id"]
 
                 await db.set_user_data("chat_id", user_id, "paid", 1)
                 await db.set_user_data("chat_id", user_id, "xui_id", str(xui_id))
                 await db.set_user_data("chat_id", user_id, "bought_at", now)
-                await db.set_user_data("chat_id", user_id, "expires_at", expires)
+                await db.set_user_data("chat_id", user_id, "expires_at", expires_at)
 
-                msg = (
-                    "Подписка подключена. Спасибо за покупку!\n"
-                    f"Истекает: {utils.parse_expiry_time(expires, "%d.%m.%y")}\n"
-                    'Перейдите в раздел "Установить VPN" для установки.')
+                msg = msg_text["sub_connected"].format(
+                    expires_at=utils.parse_expiry_time(expires_at, "%d.%m.%y")
+                )
 
                 await bot.send_message(chat_id=user_id, text=msg)
 
         elif "deny" in callback.data:
             await callback.message.edit_reply_markup(reply_markup=deny_markup)
-            await bot.send_message(chat_id=user_id, text='Оплата подписки была отклонена. Вы можете спросить о причинах в разделе "Поддрежка"')
+            await bot.send_message(
+                chat_id=user_id,
+                text=msg_text["payment_deny"]
+            )
 
-    except Exception as e: logger.debug(e, exc_info=True)
+    except Exception as e: logger.debug(e, exc_info=1)
 
 
 
 @router_main.message(states.problem)
 async def problem(message: Message, bot: Bot):
     try:
-        chat_id = message.chat.id
+        user_id = message.chat.id
 
-        msg_text = message.text if message.text else ""
+        user_msg_text = message.text if message.text else ""
         msg_caption = message.caption if message.caption else ""
         photo = message.photo[-1] if message.photo else False
         document = message.document if message.document else False
 
-        user_data = f"@{message.from_user.username} | {message.chat.id}" 
-        msg = user_data + "\n\n" + msg_caption if msg_caption else user_data + "\n\n" + msg_text
+        user_data = f"@{message.from_user.username} | {user_id}" 
+        msg = user_data + "\n\n" + msg_caption if msg_caption else user_data + "\n\n" + user_msg_text
 
         if photo:
             # сохраняем фото
@@ -375,22 +353,23 @@ async def problem(message: Message, bot: Bot):
             photo_info = await bot.get_file(photo_id) # получаем само фото с серверов ТГ по id
 
             downloaded_photo = await bot.download_file(photo_info.file_path) # сохраняем фото в переменную
-            photo_path = os.path.join("files", "temp", f"{message.chat.id}_{random.randint(0, 999)}.jpg") # определяем путь, куда сохранится фото
+            photo_path = os.path.join("files", "temp", f"{user_id}_{random.randint(0, 999)}.jpg") # определяем путь, куда сохранится фото
 
             with open (photo_path, 'wb') as photo:
                 photo.write(downloaded_photo.read()) # сохраняем фото по указанному пути
-            logger.debug(f"изображение {chat_id} сохранено")
+            logger.debug(f"problem | {user_id}: изображение сохранено")
 
             # отправляем сообщение админу
             await bot.send_photo(
                 chat_id=1616183086,
                 photo=FSInputFile(photo_path),
-                caption=msg)
-            logger.debug(f"изображение {chat_id} отправлено")
+                caption=msg
+            )
+            logger.debug(f"problem | {user_id}: изображение отправлено")
 
             # удаляем фото
             os.remove(photo_path)
-            logger.debug(f"изображение {chat_id} удалено")
+            logger.debug(f"problem | {user_id}: изображение удалено")
         
         elif document:
 
@@ -400,31 +379,36 @@ async def problem(message: Message, bot: Bot):
             document_ext = dict(document_info)['file_path'].split('/')[-1].split('.')[-1]
 
             downloaded_document = await bot.download_file(document_info.file_path)
-            document_path = os.path.join("files", "temp", f"{message.chat.id}_{random.randint(0, 999)}.{document_ext}")
+            document_path = os.path.join("files", "temp", f"{user_id}_{random.randint(0, 999)}.{document_ext}")
 
             with open (document_path, 'wb') as document:
                 document.write(downloaded_document.read())
-            logger.debug(f"документ {chat_id} сохранен")
+            logger.debug(f"problem | {user_id}: документ сохранен")
 
             # отправляем документ админу
             await bot.send_document(
                 chat_id=1616183086,
                 document=FSInputFile(document_path),
                 caption=msg)
-            logger.debug(f"документ {chat_id} отправлен")
+            logger.debug(f"problem | {user_id}: документ отправлен")
 
             # удаляем документ
             os.remove(document_path)
-            logger.debug(f"документ {chat_id} удален")
+            logger.debug(f"problem | {user_id}: документ удален")
 
         else:
             await bot.send_message(
                 chat_id=1616183086,
-                text=msg)
+                text=msg
+            )
 
-        await message.answer(text="Сообщение доставлено. В скором времени с вами свяжится поддержка.\nВы можете дополнить обращение, отправив детали сюда же")
+        await message.answer(
+            text=msg_text["problem_accepted"],
+            parse_mode="HTML",
+            reply_markup=markup.to_main
+        )
 
-    except Exception as e: logger.error(e, exc_info=True)
+    except Exception as e: logger.error(e, exc_info=1)
 
 @router_main.message(states.payment)
 async def approve_payment(message: Message, bot: Bot, state: FSMContext):
@@ -433,37 +417,37 @@ async def approve_payment(message: Message, bot: Bot, state: FSMContext):
     except Exception as e:
         photo = None
     caption = message.caption if message.caption else ""
-    chat_id = str(message.chat.id)
-    admin_msg = f"{datetime.now()} | {chat_id} | @{message.from_user.username}\n"
+    user_id = message.chat.id
+    admin_msg = f"{datetime.now()} | {user_id} | @{message.from_user.username}\n"
 
     if not photo:
-        await message.answer("В сообщении не обнаружено фото\nДля подтверждения оплаты отправьте скриншот из банка")
+        await message.answer(text=msg_text["without_photo"])
         await state.set_state(states.payment)
         return
     else:
-        await message.answer("Подписка будет оплачена, когда администратор подтвердит перевод. Вы будете оповещены\nСпасибо, что выбрали SimpleVPN")
+        await message.answer(text=msg_text["found_scrnShot"])
 
         # сохраняем фото
         photo_id = photo.file_id
         photo_info = await bot.get_file(photo_id) # получаем само фото с серверов ТГ по id
 
         downloaded_photo = await bot.download_file(photo_info.file_path) # сохраняем фото в переменную
-        photo_path = os.path.join("files", "temp", f"{chat_id}_{random.randint(0, 999)}.jpg") # определяем путь, куда сохранится фото
+        photo_path = os.path.join("files", "temp", f"{user_id}_{random.randint(0, 999)}.jpg") # определяем путь, куда сохранится фото
 
         with open (photo_path, 'wb') as photo:
             photo.write(downloaded_photo.read()) # сохраняем фото по указанному пути
-        logger.debug(f"изображение {chat_id} сохранено")
+        logger.debug(f"approve_payment | {user_id}: изображение сохранено")
 
         # отправляем сообщение админу
         await bot.send_photo(
             chat_id=1616183086,
             photo=FSInputFile(photo_path),
             caption=admin_msg + caption,
-            reply_markup=markup.approve_payment(chat_id))
-        logger.debug(f"изображение {chat_id} отправлено")
+            reply_markup=markup.approve_payment(str(user_id)))
+        logger.debug(f"approve_payment | {user_id}: изображение отправлено")
 
         # удаляем фото
         os.remove(photo_path)
-        logger.debug(f"изображение {chat_id} удалено") 
+        logger.debug(f"approve_payment | {user_id}: изображение удалено") 
 
     

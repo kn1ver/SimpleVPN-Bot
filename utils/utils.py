@@ -1,6 +1,7 @@
 from aiogram.types import FSInputFile
 from aiogram import Bot
 from datetime import datetime
+from config import MESSAGES as msg_text, LINK_BODY
 from utils.logger import logger
 from utils import xui
 from pathlib import Path
@@ -32,8 +33,7 @@ def size_parser(num_bytes: int) -> str:
 
 def time_parser(seconds: int) -> str:
     """
-    Преобразует время в секундах в читаемый формат с точностью до часов.
-    Пример: 90000 → '1 день 1 час'
+    Преобразует время в секундах в читаемый формат с точностью до часов
     """
 
     seconds = int(seconds)
@@ -68,7 +68,7 @@ def time_parser(seconds: int) -> str:
 
 def parse_expiry_time(expiry_time: int, format: str | None="%Y-%m-%d %H:%M:%S") -> str:
     """
-    Преобразует expiryTime (в миллисекундах) в удобную дату/время.
+    Преобразует expiryTime (в миллисекундах) в удобную дату/время
     """
     if not expiry_time or expiry_time == 0:
         return "Без ограничения"
@@ -98,18 +98,12 @@ def decrypt_json(encrypted_data: bytes, aes_key: bytes) -> dict:
 
     return json.loads(plaintext.decode("utf-8"))
 
-async def add_user_xui(email: str):
-    pass
-
 async def get_archive(user_id: str, bot: Bot, msg_id: int):
     xui_data = xui.get_user_data(user_id)
     xui_id = xui_data["PC"]["id"]
     aes_key = hashlib.sha256(str(xui_id).encode("utf-8")).digest()
-    chat_id = user_id
     randint = random.randint(0, 1000)
-    msg = "С порядоком установки VPN на компьютер вы можете ознакомиться по этой ссылке:\n" \
-            "https://teletype.in/@kn1ver/install-pc \n\n" \
-            f"<b>Ваш ключ активации</b>: <code>{xui_id}</code>\n\n Архивы отправляются ▯▯▯▯▯▯▯▯▯▯"
+    msg = msg_text["platforms_pc"].format(xui_id=xui_id)
 
     src = FILES_DIR / "nekoray"
     dst = FILES_DIR / "temp" / f"nekoray_{user_id}_{randint}"
@@ -117,20 +111,20 @@ async def get_archive(user_id: str, bot: Bot, msg_id: int):
     shutil.copytree(src, dst, dirs_exist_ok=True)
     msg = msg[:-10] + "▮▯▯▯▯▯▯▯▯▯"
     await bot.edit_message_text(
-        chat_id=chat_id,
+        chat_id=user_id,
         message_id=msg_id,
         text=msg,
         parse_mode="HTML"
     )
-    logger.debug("Папка nekoray скопирована")
+    logger.debug(f"get_archive | {user_id}: Папка nekoray скопирована")
 
     # читаем и изменяем json
     with open(FILES_DIR / "0.json", "r", encoding="utf-8") as file:
         pattern = json.load(file)
 
     pattern["bean"]["pass"] = xui_id
-    pattern["bean"]["name"] = f"{chat_id} PC"
-    logger.debug("0.json отредактирован")
+    pattern["bean"]["name"] = f"{user_id} PC"
+    logger.debug(f"get_archive | {user_id}: 0.json отредактирован")
 
     # шифруем json
     encrypted_json = encrypt_json(pattern, aes_key)
@@ -138,10 +132,10 @@ async def get_archive(user_id: str, bot: Bot, msg_id: int):
     with open(dst / "config" / "profiles" / "0.json", "wb") as file:
         file.write(encrypted_json)
         # json.dump(pattern, file, ensure_ascii=False, indent=4)
-    logger.debug("0.json зашифрован и сохранен")
+    logger.debug(f"get_archive | {user_id}: 0.json зашифрован и сохранен")
     msg = msg[:-10] + "▮▮▯▯▯▯▯▯▯▯"
     await bot.edit_message_text(
-        chat_id=chat_id,
+        chat_id=user_id,
         message_id=msg_id,
         text=msg,
         parse_mode="HTML"
@@ -150,10 +144,10 @@ async def get_archive(user_id: str, bot: Bot, msg_id: int):
     # создаём архив
     archive_path = FILES_DIR / "temp" / f"nekoray_archive_{user_id}_{randint}.zip"
     shutil.make_archive(str(archive_path.with_suffix("")), "zip", dst)
-    logger.debug("Архив создан")
+    logger.debug(f"get_archive | {user_id}: Архив создан")
     msg = msg[:-10] + "▮▮▮▮▯▯▯▯▯▯"
     await bot.edit_message_text(
-        chat_id=chat_id,
+        chat_id=user_id,
         message_id=msg_id,
         text=msg,
         parse_mode="HTML"
@@ -169,8 +163,7 @@ async def get_link(user_id: str, platform: str | None="Android"):
     xui_email = xui_data[platform]["email"].replace(" ", "%20")
 
     addr = "vless://"
-    body = "@91.228.153.25:443?type=tcp&security=reality&pbk=NbVaXjLA9Q1w1lcBc3vmcDYkSyKbEc7LNbIC1FPK9SI&fp=chrome&sni=samsung.com&sid=&spx=%2F&flow=xtls-rprx-vision#VLESS%20Reality-"
 
-    return addr + xui_id + body + xui_email
+    return addr + xui_id + LINK_BODY + xui_email
 
 

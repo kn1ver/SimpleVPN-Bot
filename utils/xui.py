@@ -36,7 +36,7 @@ def get_user_data(user_id: str):
     r.raise_for_status()
     onlines = r.json()
 
-    logger.debug(f"onlines: {onlines}")
+    logger.debug(f"get_usr_data | onlines:\n{onlines}")
 
     for client in all_inbounds["obj"][0]["clientStats"]:
         email = client["email"].split(" ")
@@ -103,7 +103,7 @@ def reg_user_connection(user_id: str, expiry_time: int):
             "settings": json.dumps(client_settings)
         }
         r = session.post(f"{XUI_URL}/xui/API/inbounds/addClient/", json=json_body)
-        logger.debug(f"Ответ сервера [addClient]: {r.status_code} {r.text}")
+        logger.debug(f"reg_user_conn | Ответ сервера: {r.status_code} {r.text}")
 
     return True
 
@@ -152,7 +152,7 @@ def update_client_expiry(inbound_id: int, chat_id: str, new_expiry_days: int, lo
         }
 
         try:
-            logger.debug(payload)
+            logger.debug(f"updt_clnt_expiry | json:\n{payload}")
         except Exception as e:
             pass
 
@@ -162,13 +162,13 @@ def update_client_expiry(inbound_id: int, chat_id: str, new_expiry_days: int, lo
 
         if r.status_code == 200:
             if logger:
-                logger.debug(f"Успешно обновлён expiryTime клиента '{chat_id} {platform}' до {time.ctime(new_expiry_time/1000)}")
+                logger.debug(f"updt_clnt_expiry | обновлён expiryTime клиента '{chat_id} {platform}': {time.ctime(new_expiry_time/1000)}")
             else:
-                print(f"Успешно обновлён expiryTime клиента '{chat_id} {platform}' до {time.ctime(new_expiry_time/1000)}")
+                print(f"updt_clnt_expiry | обновлён expiryTime клиента '{chat_id} {platform}': {time.ctime(new_expiry_time/1000)}")
         else:
             if logger:
-                logger.error(f"Ошибка обновления expiryTime: {r.text}")
+                logger.error(f"updt_clnt_expiry | Ошибка обновления expiryTime: {r.text}")
             else:
-                print(f"Ошибка обновления expiryTime: {r.text}")
+                print(f"updt_clnt_expiry | Ошибка обновления expiryTime: {r.text}")
 
     return True

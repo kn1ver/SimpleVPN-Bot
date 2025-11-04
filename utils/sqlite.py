@@ -11,8 +11,6 @@ async def create_db() -> None:
         await cursor.execute('CREATE TABLE IF NOT EXISTS users (chat_id INTEGER PRIMARY KEY, xui_id TEXT, activated INTEGER, paid INTEGER, bought_at INTEGER, expires_at INTEGER)')
         await connection.commit()
 
-    logger.debug("База данных создана")
-
     return True
 
 async def reg_user(user_id: str):
@@ -41,7 +39,7 @@ async def set_user_data(filter: str, filter_value: str, key: str, value):
         await cursor.execute(query)
         await connection.commit()
 
-    logger.debug(f"Изменение данных пользователя\nФильтр: {filter} | Значение: {filter_value}\nПоле: {key} | Значение: {value}")
+    logger.debug(f"set_usr_data| Изменение данных пользователя\nФильтр: {filter} | Значение: {filter_value}\nПоле: {key} | Значение: {value}")
 
 
 async def get_user_data(filter: str, filter_value: str, columns: list) -> list:
@@ -57,7 +55,7 @@ async def get_user_data(filter: str, filter_value: str, columns: list) -> list:
         await cursor.execute(query)
         user_data = await cursor.fetchall()
 
-    logger.debug(user_data)
+    logger.debug(f"sqlite | get_usr_data:\n{user_data}")
     return user_data
 
 
