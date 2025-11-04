@@ -24,6 +24,65 @@ class states (StatesGroup):
     problem = State()
     payment = State()
 
+@router_main.message(Command('key'))
+async def command_key(message: Message):
+    xui_data = xui.get_user_data(str(user_id))
+    xui_id = xui_data["PC"]["id"] if xui_data else msg_text["paid_0"]
+    await message.answer(
+        text=f"<spoiler>{xui_id}</spoiler>",
+        parse_mode="HTML"
+    )
+
+@router_main.message(Command('profile'))
+async def command_profile(message: Message):
+    try:
+        user_id = message.chat.id
+        client = xui.get_user_data(str(user_id))
+        logger.debug(f"profile | xui.get_user_data:\n{client}\n\n")
+
+        if not client or not client["PC"]["enable"]:
+            await message.answer(
+                text=msg_text["paid_0"],
+                reply_markup=markup.pay_vpn
+            )
+
+        platform_messages = []
+        platforms = ["PC", "Android", "IOS"]
+        for platform in platforms:
+            platform_message = msg_text["profile_platform"].format(
+                platform=platform,
+                enable='✅ Да' if client[platform]['enable'] else '🔴 Нет',
+                online='🟢 Онлайн' if client[platform]['online'] else '🔴 Офлайн',
+                down=client[platform]['down'],
+                up=client[platform]['up'],
+                expiry=client[platform]['expiryTime']
+            ) if client[platform] else ""
+            platform_messages.append(platform_message)
+
+        msg = f"Ваши устройства:\n\n{"".join(platform_messages)}"
+
+        await message.answer(
+            text=msg,
+            reply_markup=markup.to_main,
+            parse_mode="HTML"
+        )
+
+    except Exception as e:
+        if e != KeyError:
+            logger.error(e, exc_info=1)
+
+@router_main.message(Command('support'))
+async def command_support(message: Message):
+    try:
+
+        await callback.message.edit_text(
+            text=msg_text["help"],
+            reply_markup=markup.to_main
+        )
+        await state.set_state(states.problem)
+
+    except Exception as e: logger.error(e, exc_info=1)
+
 @router_main.message(Command('set_expiryTime'))
 async def set_expiryTime(message: Message, bot: Bot, state: FSMContext):
     if message.chat.id == 1616183086:
@@ -63,6 +122,8 @@ async def start (message: Message, bot: Bot, state: FSMContext):
         )
 
     except Exception as e: logger.error(e, exc_info=1)
+
+
 
 @router_main.callback_query(lambda c: "profile" in c.data)
 async def profile(callback: CallbackQuery, bot: Bot):
@@ -424,6 +485,7 @@ async def approve_payment(message: Message, bot: Bot, state: FSMContext):
         await message.answer(text=msg_text["without_photo"])
         await state.set_state(states.payment)
         return
+    
     else:
         await message.answer(text=msg_text["found_scrnShot"])
 
