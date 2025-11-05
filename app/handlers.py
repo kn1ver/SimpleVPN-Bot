@@ -214,39 +214,41 @@ async def install_vpn(callback: CallbackQuery, bot: Bot):
             xui_id = xui_data["PC"]["id"]
             msg = msg_text["platforms_pc"].format(xui_id=xui_id)
 
-            msg_id = await callback.message.edit_text(
-                text=msg,
-                reply_markup=markup.to_platforms,
-                parse_mode="HTML"
-            )
+            if "get_archives" in callback.data:
+                archive, dll, dst, archive_path = await utils.get_archive(str(user_id), bot, int(callback.message.message_id))
+                launcher = FSInputFile("files/first_launch.exe")
 
-            archive, dll, dst, archive_path = await utils.get_archive(str(user_id), bot, int(msg_id.message_id))
-            launcher = FSInputFile("files/first_launch.exe")
+                await callback.message.answer_document(launcher)
+                await callback.message.answer_document(archive)
+                msg = msg[:-10] + "▮▮▮▮▮▮▮▯▯▯"
 
-            await callback.message.answer_document(launcher)
-            await callback.message.answer_document(archive)
-            msg = msg[:-10] + "▮▮▮▮▮▮▮▯▯▯"
+                await callback.message.edit_text(
+                    text=msg,
+                    parse_mode="HTML"
+                )
 
-            await callback.message.edit_text(
-                text=msg,
-                parse_mode="HTML"
-            )
+                await callback.message.answer_document(dll)
+                msg = msg[:-10] + "▮▮▮▮▮▮▮▮▮▮"
 
-            await callback.message.answer_document(dll)
-            msg = msg[:-10] + "▮▮▮▮▮▮▮▮▮▮"
+                await callback.message.edit_text(
+                    text=msg,
+                    parse_mode="HTML",
+                    reply_markup=markup.to_platforms
+                )
 
-            await callback.message.edit_text(
-                text=msg,
-                parse_mode="HTML",
-                reply_markup=markup.to_platforms
-            )
+                logger.debug(f"install_vpn -> pc | {user_id}: Архивы отправлены")
 
-            logger.debug(f"install_vpn -> pc | {user_id}: Архивы отправлены")
+                shutil.rmtree(dst, ignore_errors=True)
+                if archive_path.exists():
+                    os.remove(archive_path)
+                logger.debug(f"install_vpn -> pc | {user_id}: Временные архивы удалены")
 
-            shutil.rmtree(dst, ignore_errors=True)
-            if archive_path.exists():
-                os.remove(archive_path)
-            logger.debug(f"install_vpn -> pc | {user_id}: Временные архивы удалены")
+            else:
+                await callback.message.edit_text(
+                    text=msg,
+                    reply_markup=markup.to_platforms,
+                    parse_mode="HTML"
+                )
 
         elif "android" in callback.data:
             user_config = await utils.get_link(str(user_id), "Android")

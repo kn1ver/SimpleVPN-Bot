@@ -81,6 +81,7 @@ def reg_user_connection(user_id: str, expiry_time: int):
     xui_login()
 
     platforms = ["PC", "Android", "IOS"]
+    limitIp = 2 if user_id == "5236098119" else 1
 
     for platform in platforms:
         client_uuid = str(uuid.uuid4())
@@ -94,7 +95,7 @@ def reg_user_connection(user_id: str, expiry_time: int):
                 "enable": True,
                 "tgId": user_id,
                 "subId": "autogen-" + client_uuid[:8],
-                "limitIp": 1,
+                "limitIp": limitIp,
                 "reset": 0
             }]
         }
