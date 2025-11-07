@@ -3,6 +3,7 @@ try:
     import sys
     import platform
     import json
+    import base64
     import zipfile
     import subprocess
     import hashlib
@@ -16,16 +17,16 @@ try:
     def get_base_path():
         """
         Возвращает папку, откуда запускается приложение.
-        - если приложение "заморожено" (pyinstaller/py2exe), возвращаем папку exe (sys.executable)
-        - иначе — папку, где лежит текущий .py (как раньше)
+        Работает и в .py-версии, и в собранном .exe.
         """
-        # PyInstaller (and similar) sets an attribute 'frozen' on sys and uses sys.executable
         if getattr(sys, "frozen", False):
-            # Когда используется --onefile, исполняемый файл распакован во временную папку,
-            # но сами внешние файлы (архивы) обычно лежат рядом с exe, поэтому берём dirname(sys.executable)
+            # При сборке с PyInstaller --onefile файлы распаковываются во временную папку,
+            # но внешние файлы (архивы) обычно лежат рядом с exe, поэтому берём путь exe.
             return os.path.dirname(sys.executable)
-        # fallback for regular python execution
-        return os.path.dirname(os.path.abspath(file))
+        else:
+            # При обычном запуске Python возвращаем путь к текущему .py файлу
+            return os.path.dirname(os.path.abspath(__file__))
+
 
     # ----------- Настройки -----------
     APP_NAME = "SimpleVPN"
@@ -34,7 +35,7 @@ try:
     DEST_FOLDER_NAME = "SimpleVPN"
     DEST_FOLDER = os.path.join(BASE_PATH, DEST_FOLDER_NAME)
 
-    API_URL = "http://91.228.153.25:5018"
+    API_URL = "http://127.0.0.1:5018"
     EXE_FILE = os.path.join(DEST_FOLDER, "nekobox.exe")
     ENCRYPTED_FILE = os.path.join(DEST_FOLDER, "config", "profiles", "0.json")
     DECRYPTED_FILE = os.path.join(DEST_FOLDER, "config", "profiles", "0.json")
@@ -64,6 +65,65 @@ try:
 
         return
 
+    def delete_archives(chat_id):
+        try:
+            response = requests.post(f"{API_URL}/api/delete_archives", json={"chat_id": str(chat_id)})
+            response.raise_for_status()
+            data = response.json()
+            if not data.get("success"):
+                raise Exception(data.get("error", "Unknown error"))
+
+        except Exception as e:
+            logger.exception("Ошибка при удалении архивов")
+            print(f"Не удалось удалить архивы: {e}")
+            return []
+
+    def create_archives(chat_id):
+        try:
+            print("Архивы создаются...")
+            response = requests.post(f"{API_URL}/api/create_archives", json={"chat_id": str(chat_id)})
+            response.raise_for_status()
+            data = response.json()
+            if not data.get("success"):
+                raise Exception(data.get("error", "Unknown error"))
+            
+            print("[OK] Архивы созданы.")
+            return True
+
+        except Exception as e:
+            logger.exception("Ошибка при создании архивов")
+            print(f"Не удалось создать архивы: {e}")
+            return []
+
+    def download_archives(user_chat_id):
+        """
+        Запрашивает у API уникальные архивы и сохраняет их рядом с exe.
+        """
+        logger.info(f"Запрашиваем архивы для пользователя {user_chat_id} ...")
+        print("Скачиваю архивы...")
+        try:
+            response = requests.post(f"{API_URL}/api/get_archives", json={"chat_id": str(user_chat_id)}, timeout=20)
+            response.raise_for_status()
+            data = response.json()
+            if not data.get("success"):
+                raise Exception(data.get("error", "Unknown error"))
+
+            archives = data.get("archives", {})
+            saved_files = []
+            for name, b64content in archives.items():
+                out_path = os.path.join(BASE_PATH, name)
+                with open(out_path, "wb") as f:
+                    f.write(base64.b64decode(b64content))
+                saved_files.append(out_path)
+                logger.info(f"Сохранил архив: {out_path}")
+
+            print("[OK] Архивы скачаны.")
+            return saved_files
+        except Exception as e:
+            logger.exception("Ошибка при загрузке архивов")
+            print(f"Не удалось скачать архивы: {e}")
+            return []
+
 
     # -------------- работа с файлами -----------------
     def extract_archives():
@@ -71,6 +131,7 @@ try:
         Ищет и распаковывает архивы nekoray_archive*.zip в папку DEST_FOLDER,
         где DEST_FOLDER формируется относительно текущего базового пути.
         """
+        print("Распаковываю архивы...")
         base_path = get_base_path()
         logger.info(f"Ищем архивы в папке запуска: {base_path}")
 
@@ -104,8 +165,7 @@ try:
         if not found:
             logger.warning("Не найдено файлов nekoray_archive*.zip в папке запуска.")
         else:
-            # полезное визуальное подтверждение для пользователя (как было)
-            print("Архивы успешно обработаны.")
+            print("[OK] Архивы успешно обработаны.")
 
     def decrypt_json(encrypted_data: bytes, aes_key: bytes) -> dict:
         """Расшифровывает бинарные данные обратно в JSON"""
@@ -197,7 +257,12 @@ try:
         print(f"Запуск {EXE_FILE}...")
         subprocess.run([EXE_FILE], check=True)
 
-    def build(xui_id):
+    def build(xui_id, chat_id):
+
+        create_archives(chat_id)
+        download_archives(chat_id)
+        delete_archives(chat_id)        
+
         extract_archives()
         save_decrypted_file(xui_id)
         run_exe()
@@ -225,9 +290,11 @@ try:
             return
 
         print("Ключ принят.")
-        set_activated(resp['chat_id'])
+        chat_id = resp['chat_id']
+    
+        set_activated(chat_id)
         create_activation_marker(xui_id, APP_NAME)
-        build(xui_id)
+        build(xui_id, chat_id)
         return
 
 
@@ -236,13 +303,15 @@ try:
             xui_id = read_activation_marker(APP_NAME)
 
             if xui_id:
-                build(xui_id)
+                resp = check_activation_key(xui_id)
+                build(xui_id, resp['chat_id'])
             else:
                 main()
         except Exception as e:
             print(f"Ошибка: {e}")
             traceback.print_exc()
             input()
+
 except Exception as e:
     print(f"Ошибка: {e}")
     traceback.print_exc()

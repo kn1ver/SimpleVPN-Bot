@@ -1,10 +1,191 @@
 from quart import Quart, request, jsonify
-import asyncio
+import base64, os, glob, json, shutil, random, hashlib, asyncio
+import utils.xui as xui
 import utils.sqlite as db
 from utils.logger import set_logger
+from utils.utils import encrypt_json
 
 app = Quart(__name__)
 logger = set_logger("logs/server.log", True)
+
+
+logger = set_logger("logs/server.log", True)
+
+
+@app.route('/api/create_archives', methods=['POST'])
+async def create_archives():
+    """
+    Создаёт уникальный архив пользователя.
+    Ожидает JSON: {"chat_id": "<уникальный chat_id пользователя>"}
+    """
+
+    data = await request.get_json()
+    if not data or "chat_id" not in data:
+        return jsonify({"success": False, "error": "Missing chat_id"}), 400
+
+    try:
+        user_id = str(data["chat_id"]).strip()
+        base_dir = os.path.join("files")
+        personal_archive_dir = os.path.join(base_dir, "temp")
+
+        # создаём temp-папку, если нет
+        os.makedirs(personal_archive_dir, exist_ok=True)
+
+        # получаем данные XUI и формируем ключ
+        xui_data = xui.get_user_data(user_id)
+        xui_id = xui_data["PC"]["id"]
+        aes_key = hashlib.sha256(str(xui_id).encode("utf-8")).digest()
+        randint = random.randint(0, 999)
+
+        # копируем базовую папку nekoray
+        src = os.path.join(base_dir, "nekoray")
+        dst = os.path.join(personal_archive_dir, f"nekoray_{user_id}_{randint}")
+        shutil.copytree(src, dst, dirs_exist_ok=True)
+        logger.debug(f"create_archives | {user_id}: Папка nekoray скопирована")
+
+        # читаем шаблон config 0.json
+        src_json = os.path.join(src, "config", "profiles", "0.json")
+        with open(src_json, "r", encoding="utf-8") as file:
+            pattern = json.load(file)
+
+        # изменяем параметры
+        pattern["bean"]["pass"] = xui_id
+        pattern["bean"]["name"] = f"{user_id} PC"
+        logger.debug(f"create_archives | {user_id}: 0.json отредактирован")
+
+        # шифруем json
+        encrypted_json = encrypt_json(pattern, aes_key)
+
+        dst_json = os.path.join(dst, "config", "profiles", "0.json")
+        os.makedirs(os.path.dirname(dst_json), exist_ok=True)
+        with open(dst_json, "wb") as file:
+            file.write(encrypted_json)
+
+        logger.debug(f"create_archives | {user_id}: 0.json зашифрован и сохранён")
+
+        # создаём архив
+        archive_name = f"nekoray_archive_{user_id}_{randint}.zip"
+        archive_path = os.path.join(personal_archive_dir, archive_name)
+        shutil.make_archive(archive_path[:-4], "zip", dst)
+        logger.debug(f"create_archives | {user_id}: Архив создан {archive_name}")
+
+        return jsonify({"success": True, "archive": archive_name})
+
+    except Exception as e:
+        logger.exception("Ошибка в create_archives")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/delete_archives', methods=['POST'])
+async def delete_archives():
+    """
+    Удаляет все временные архивы и рабочие папки пользователя.
+    Ожидает JSON: {"chat_id": "<уникальный chat_id пользователя>"}
+    """
+    import os, glob, shutil
+
+    data = await request.get_json()
+    if not data or "chat_id" not in data:
+        return jsonify({"success": False, "error": "Missing chat_id"}), 400
+
+    chat_id = str(data["chat_id"]).strip()
+    base_path = os.path.dirname(os.path.abspath(__file__))
+    temp_dir = os.path.join(base_path, "files", "temp")
+
+    try:
+        if not os.path.exists(temp_dir):
+            return jsonify({"success": False, "error": "Temp folder not found"}), 404
+
+        # Маска для архивов и папок
+        archive_pattern = os.path.join(temp_dir, f"nekoray_archive_{chat_id}_*.zip")
+        folder_pattern = os.path.join(temp_dir, f"nekoray_{chat_id}_*")
+
+        # Находим все совпадения
+        archives = glob.glob(archive_pattern)
+        folders = glob.glob(folder_pattern)
+
+        deleted_count = 0
+
+        # Удаляем архивы
+        for path in archives:
+            try:
+                os.remove(path)
+                deleted_count += 1
+                logger.debug(f"delete_archives | {chat_id}: Удалён архив {os.path.basename(path)}")
+            except Exception as e:
+                logger.warning(f"delete_archives | Ошибка при удалении {path}: {e}")
+
+        # Удаляем временные папки
+        for path in folders:
+            try:
+                shutil.rmtree(path, ignore_errors=True)
+                deleted_count += 1
+                logger.debug(f"delete_archives | {chat_id}: Удалена папка {os.path.basename(path)}")
+            except Exception as e:
+                logger.warning(f"delete_archives | Ошибка при удалении {path}: {e}")
+
+        if deleted_count == 0:
+            return jsonify({"success": False, "error": f"No archives found for chat_id={chat_id}"}), 404
+
+        logger.info(f"delete_archives | {chat_id}: Удалено {deleted_count} элементов")
+        return jsonify({"success": True, "deleted": deleted_count})
+
+    except Exception as e:
+        logger.exception("Ошибка при удалении архивов")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/get_archives', methods=['POST'])
+async def get_archives():
+    """
+    Возвращает два архива для указанного пользователя.
+    Ожидает JSON: {"chat_id": "<уникальный chat_id пользователя>"}
+
+    1. nekoray_archive_<chat_id>_<rand>.zip  — индивидуальный архив
+    2. nekoray_archive_dll.zip               — общий архив
+
+    Оба файла возвращаются base64-кодированными строками в JSON.
+    """
+
+    data = await request.get_json()
+    if not data or "chat_id" not in data:
+        return jsonify({"success": False, "error": "Missing chat_id"}), 400
+
+    chat_id = str(data["chat_id"]).strip()
+    base_dir = os.path.join("files")
+    personal_archive_dir = os.path.join("files", "temp")
+
+    try:
+        # --- ищем индивидуальный архив по маске ---
+        pattern = os.path.join(personal_archive_dir, f"nekoray_archive_{chat_id}_*.zip")
+        matches = glob.glob(pattern)
+        if not matches:
+            return jsonify({"success": False, "error": f"No archives found for chat_id={chat_id}"}), 404
+
+        # берём самый свежий архив (по времени изменения)
+        user_archive_path = max(matches, key=os.path.getmtime)
+
+        # --- второй архив (DLL) фиксированный ---
+        dll_archive_path = os.path.join(base_dir, "nekoray_archive_dll.zip")
+        if not os.path.exists(dll_archive_path):
+            return jsonify({"success": False, "error": "DLL archive not found"}), 404
+
+        # --- кодируем оба файла в base64 ---
+        def encode_file(path):
+            with open(path, "rb") as f:
+                return base64.b64encode(f.read()).decode("utf-8")
+
+        archives_data = {
+            os.path.basename(user_archive_path): encode_file(user_archive_path),
+            os.path.basename(dll_archive_path): encode_file(dll_archive_path),
+        }
+
+        logger.info(f"[get_archives] Отправляем архивы для chat_id={chat_id}: "
+                    f"{os.path.basename(user_archive_path)}, nekoray_archive_dll.zip")
+
+        return jsonify({"success": True, "archives": archives_data})
+    except Exception as e:
+        logger.exception("Ошибка при выдаче архивов")
+        return jsonify({"success": False, "error": str(e)}), 500
+
 
 @app.route('/api/check_key', methods=['POST'])
 async def check_key():
