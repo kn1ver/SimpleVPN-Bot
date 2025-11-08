@@ -214,35 +214,11 @@ async def install_vpn(callback: CallbackQuery, bot: Bot):
             xui_id = xui_data["PC"]["id"]
             msg = msg_text["platforms_pc"].format(xui_id=xui_id)
 
-            if "get_archives" in callback.data:
-                archive, dll, dst, archive_path = await utils.get_archive(str(user_id), bot, int(callback.message.message_id))
-                launcher = FSInputFile("files/first_launch.exe")
+            if "get_installer" in callback.data:
+                installer = FSInputFile("files/installer.exe")
 
-                await callback.message.answer_document(launcher)
-                await callback.message.answer_document(archive)
-                msg = msg[:-10] + "▮▮▮▮▮▮▮▯▯▯"
-
-                await callback.message.edit_text(
-                    text=msg,
-                    parse_mode="HTML"
-                )
-
-                await callback.message.answer_document(dll)
-                msg = msg[:-10] + "▮▮▮▮▮▮▮▮▮▮"
-
-                await callback.message.edit_text(
-                    text=msg,
-                    parse_mode="HTML",
-                    reply_markup=markup.to_platforms
-                )
-
-                logger.debug(f"install_vpn -> pc | {user_id}: Архивы отправлены")
-
-                shutil.rmtree(dst, ignore_errors=True)
-                if archive_path.exists():
-                    os.remove(archive_path)
-                logger.debug(f"install_vpn -> pc | {user_id}: Временные архивы удалены")
-
+                await callback.message.answer_document(installer)
+                
             else:
                 await callback.message.edit_text(
                     text=msg,

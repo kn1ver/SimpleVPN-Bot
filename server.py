@@ -28,7 +28,7 @@ async def create_archives():
         os.makedirs(personal_archive_dir, exist_ok=True)
 
         # получаем данные XUI и формируем ключ
-        xui_data = xui.get_user_data(user_id)
+        xui_data = xui.get_user_data(user_id, logger)
         xui_id = xui_data["PC"]["id"]
         aes_key = hashlib.sha256(str(xui_id).encode("utf-8")).digest()
         randint = random.randint(0, 999)
@@ -191,7 +191,7 @@ async def check_key():
 
     xui_id = data['xui_id']
     try:
-        user_data = await db.get_user_data("xui_id", xui_id, ["activated", "chat_id"])
+        user_data = await db.get_user_data("xui_id", xui_id, ["activated", "chat_id"], logger)
         if user_data:
             activated = user_data[0][0]
             chat_id = user_data[0][1]
@@ -213,7 +213,7 @@ async def set_activate():
     chat_id = data['chat_id']
     logger.debug(f"[set_activate] {chat_id}")
     try:
-        await db.set_user_data('chat_id', str(chat_id), 'activated', '1')
+        await db.set_user_data('chat_id', str(chat_id), 'activated', '1', logger)
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500

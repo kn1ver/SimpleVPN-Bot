@@ -8,6 +8,7 @@ from utils.logger import logger
 from config import XUI_LOGIN, XUI_PASS, XUI_URL
 
 session = requests.Session()
+logger_default = logger
 INBOUND_ID = 1
 
 def xui_login():
@@ -20,7 +21,7 @@ def xui_login():
 
     return r
 
-def get_user_data(user_id: str):
+def get_user_data(user_id: str, logger=logger_default) -> dict:
     """
     Возвращает email, активность, статус соединения, трафик (загрузка/скачивание/всего) и дату окончания by user email
     """
@@ -76,7 +77,7 @@ def get_user_data(user_id: str):
 
     return result
 
-def reg_user_connection(user_id: str, expiry_time: int):
+def reg_user_connection(user_id: str, expiry_time: int, logger=logger_default) -> bool:
 
     xui_login()
 
@@ -108,7 +109,7 @@ def reg_user_connection(user_id: str, expiry_time: int):
 
     return True
 
-def update_client_expiry(inbound_id: int, chat_id: str, new_expiry_days: int, logger=None):
+def update_client_expiry(inbound_id: int, chat_id: str, new_expiry_days: int, logger=logger_default) -> bool:
     """
     Обновляет expiryTime пользователя в x-ui панели
     :param inbound_id: ID инбаунда

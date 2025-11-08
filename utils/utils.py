@@ -15,6 +15,7 @@ import json
 import hashlib
 import random
 
+logger_default = logger
 BASE_DIR = Path(__file__).resolve().parent.parent  # поднимаемся из utils/ в корень проекта
 FILES_DIR = BASE_DIR / "files"
 
@@ -98,7 +99,7 @@ def decrypt_json(encrypted_data: bytes, aes_key: bytes) -> dict:
 
     return json.loads(plaintext.decode("utf-8"))
 
-async def get_archive(user_id: str, bot: Bot, msg_id: int):
+async def get_archive(user_id: str, bot: Bot, msg_id: int, logger=logger_default):
     xui_data = xui.get_user_data(user_id)
     xui_id = xui_data["PC"]["id"]
     aes_key = hashlib.sha256(str(xui_id).encode("utf-8")).digest()

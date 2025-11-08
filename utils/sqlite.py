@@ -1,6 +1,8 @@
 import aiosqlite
 from utils.logger import logger
 
+logger_default = logger
+
 async def create_db() -> None:
     """
     Создает базу данных.
@@ -13,7 +15,7 @@ async def create_db() -> None:
 
     return True
 
-async def reg_user(user_id: str):
+async def reg_user(user_id: str, logger=logger_default):
     """
     Регистрирует пользователя в бд
     """
@@ -27,7 +29,7 @@ async def reg_user(user_id: str):
     return True
 
 
-async def set_user_data(filter: str, filter_value: str, key: str, value):
+async def set_user_data(filter: str, filter_value: str, key: str, value: any, logger=logger_default):
     """
     Задает для key значение: value по filter 
     """
@@ -42,7 +44,7 @@ async def set_user_data(filter: str, filter_value: str, key: str, value):
     logger.debug(f"set_usr_data| Изменение данных пользователя\nФильтр: {filter} | Значение: {filter_value}\nПоле: {key} | Значение: {value}")
 
 
-async def get_user_data(filter: str, filter_value: str, columns: list) -> list:
+async def get_user_data(filter: str, filter_value: str, columns: list[str], logger=logger_default) -> list:
     """
     Возвращает список со значениями запрошенных столбцов.
     """
@@ -59,7 +61,7 @@ async def get_user_data(filter: str, filter_value: str, columns: list) -> list:
     return user_data
 
 
-async def search_for_key(key):
+async def search_for_key(key, logger=logger_default):
     async with aiosqlite.connect('bot.sql') as connection:
         cursor = await connection.cursor()
         await cursor.execute(f"SELECT activated FROM users WHERE activate_key = '{key}'")
