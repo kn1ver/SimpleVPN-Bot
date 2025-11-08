@@ -1,4 +1,4 @@
-from quart import Quart, request, jsonify
+from quart import Quart, request, jsonify, send_file
 import base64, os, glob, json, shutil, random, hashlib, asyncio
 import utils.xui as xui
 import utils.sqlite as db
@@ -7,10 +7,6 @@ from utils.utils import encrypt_json
 
 app = Quart(__name__)
 logger = set_logger("logs/server.log", True)
-
-
-logger = set_logger("logs/server.log", True)
-
 
 @app.route('/api/create_archives', methods=['POST'])
 async def create_archives():
@@ -136,54 +132,50 @@ async def delete_archives():
 @app.route('/api/get_archives', methods=['POST'])
 async def get_archives():
     """
-    Возвращает два архива для указанного пользователя.
-    Ожидает JSON: {"chat_id": "<уникальный chat_id пользователя>"}
-
-    1. nekoray_archive_<chat_id>_<rand>.zip  — индивидуальный архив
-    2. nekoray_archive_dll.zip               — общий архив
-
-    Оба файла возвращаются base64-кодированными строками в JSON.
+    Отправляет два архива как единый zip-пакет.
+    Ожидает JSON: {"chat_id": "<id пользователя>"}
     """
+    import io, zipfile, glob, os
 
     data = await request.get_json()
     if not data or "chat_id" not in data:
         return jsonify({"success": False, "error": "Missing chat_id"}), 400
 
     chat_id = str(data["chat_id"]).strip()
+    personal_arch_dir = os.path.join("files", "temp")
     base_dir = os.path.join("files")
-    personal_archive_dir = os.path.join("files", "temp")
 
     try:
-        # --- ищем индивидуальный архив по маске ---
-        pattern = os.path.join(personal_archive_dir, f"nekoray_archive_{chat_id}_*.zip")
+        # ищем архив пользователя
+        pattern = os.path.join(personal_arch_dir, f"nekoray_archive_{chat_id}_*.zip")
         matches = glob.glob(pattern)
         if not matches:
-            return jsonify({"success": False, "error": f"No archives found for chat_id={chat_id}"}), 404
+            return jsonify({"success": False, "error": f"No archive for chat_id={chat_id}"}), 404
+        user_archive = max(matches, key=os.path.getmtime)
 
-        # берём самый свежий архив (по времени изменения)
-        user_archive_path = max(matches, key=os.path.getmtime)
-
-        # --- второй архив (DLL) фиксированный ---
-        dll_archive_path = os.path.join(base_dir, "nekoray_archive_dll.zip")
-        if not os.path.exists(dll_archive_path):
+        # фиксированный dll-архив
+        dll_archive = os.path.join(base_dir, "nekoray_archive_dll.zip")
+        if not os.path.exists(dll_archive):
             return jsonify({"success": False, "error": "DLL archive not found"}), 404
 
-        # --- кодируем оба файла в base64 ---
-        def encode_file(path):
-            with open(path, "rb") as f:
-                return base64.b64encode(f.read()).decode("utf-8")
+        # упаковываем оба архива во временный zip в памяти
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+            zf.write(user_archive, os.path.basename(user_archive))
+            zf.write(dll_archive, os.path.basename(dll_archive))
+        buf.seek(0)
 
-        archives_data = {
-            os.path.basename(user_archive_path): encode_file(user_archive_path),
-            os.path.basename(dll_archive_path): encode_file(dll_archive_path),
-        }
+        logger.info(f"[get_archives] chat_id={chat_id}: отправляем оба архива")
 
-        logger.info(f"[get_archives] Отправляем архивы для chat_id={chat_id}: "
-                    f"{os.path.basename(user_archive_path)}, nekoray_archive_dll.zip")
-
-        return jsonify({"success": True, "archives": archives_data})
+        # потоковая отдача — без блокировки event loop
+        return await send_file(
+            buf,
+            mimetype="application/zip",
+            as_attachment=True,
+            attachment_filename=f"archives_{chat_id}.zip"
+        )
     except Exception as e:
-        logger.exception("Ошибка при выдаче архивов")
+        logger.exception("Ошибка при формировании архивов")
         return jsonify({"success": False, "error": str(e)}), 500
 
 
@@ -238,4 +230,4 @@ async def health():
 # Запуск сервера
 # ------------------------------
 if __name__ == '__main__':
-    app.run(host="127.0.0.1", port=5018, debug=True)
+    app.run(host="0.0.0.0", port=5018, debug=True)

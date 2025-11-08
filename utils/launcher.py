@@ -95,34 +95,27 @@ try:
             print(f"Не удалось создать архивы: {e}")
             return []
 
-    def download_archives(user_chat_id):
-        """
-        Запрашивает у API уникальные архивы и сохраняет их рядом с exe.
-        """
-        logger.info(f"Запрашиваем архивы для пользователя {user_chat_id} ...")
-        print("Скачиваю архивы...")
+    def download_archives(chat_id):
         try:
-            response = requests.post(f"{API_URL}/api/get_archives", json={"chat_id": str(user_chat_id)}, timeout=20)
-            response.raise_for_status()
-            data = response.json()
-            if not data.get("success"):
-                raise Exception(data.get("error", "Unknown error"))
+            url = f"{API_URL}/api/get_archives"
+            resp = requests.post(url, json={"chat_id": str(chat_id)}, timeout=120)
+            if resp.status_code != 200:
+                raise Exception(f"Ошибка {resp.status_code}: {resp.text[:200]}")
+            out_zip = os.path.join(BASE_PATH, f"archives_{chat_id}.zip")
+            with open(out_zip, "wb") as f:
+                f.write(resp.content)
+            logger.info(f"Сохранил {out_zip}")
 
-            archives = data.get("archives", {})
-            saved_files = []
-            for name, b64content in archives.items():
-                out_path = os.path.join(BASE_PATH, name)
-                with open(out_path, "wb") as f:
-                    f.write(base64.b64decode(b64content))
-                saved_files.append(out_path)
-                logger.info(f"Сохранил архив: {out_path}")
-
-            print("[OK] Архивы скачаны.")
-            return saved_files
+            # распаковываем оба архива
+            with zipfile.ZipFile(out_zip, "r") as zf:
+                zf.extractall(BASE_PATH)
+            logger.info("Архивы успешно извлечены.")
+            os.remove(out_zip)
+            return True
         except Exception as e:
             logger.exception("Ошибка при загрузке архивов")
             print(f"Не удалось скачать архивы: {e}")
-            return []
+            return False
 
 
     # -------------- работа с файлами -----------------
