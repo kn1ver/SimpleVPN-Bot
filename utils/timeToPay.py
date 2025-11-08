@@ -3,15 +3,12 @@ import aiosqlite
 import asyncio
 import time
 
-from utils.logger import set_logger
 from utils import utils
 from config import BOT_TOKEN
 from app import keyboards as markup
 
 from aiogram import F, Router, Bot
 from datetime import datetime, timedelta
-
-logger = set_logger("logs/timeToPay.log", False)
 
 async def db_search():
     now = int(time.time()) * 1000

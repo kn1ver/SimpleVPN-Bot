@@ -33,7 +33,7 @@ MESSAGES = {
     ),
     "platforms_adnroid": (
                 "Порядок установки VPN на android:\n\n"
-                "  1. Откройте ссылку: https://drive.google.com/file/d/1MsrZp13yQUGQHRZIAJHYU6CdSQIwffel/view?usp=sharing \n"
+                "  1. Вставьте ссылку в адресную строку браузера: https://drive.google.com/file/d/1MsrZp13yQUGQHRZIAJHYU6CdSQIwffel/view?usp=sharing \n"
                 "  2. Загрузите файл <u>v2rayNG_1.10.23.apk</u> с диска\n"
                 "  3. Откройте этот файл и установите приложение\n"
                 "  4. Следуйте инструкциям отсюда: https://teletype.in/@kn1ver/Android-install \n\n"

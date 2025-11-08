@@ -15,6 +15,11 @@ to_main = InlineKeyboardMarkup(
 
 to_platforms = InlineKeyboardMarkup(
     inline_keyboard=[
+        [InlineKeyboardButton(text='Назад', callback_data='return_to_platforms')]
+    ])
+
+pc = InlineKeyboardMarkup(
+    inline_keyboard=[
         [InlineKeyboardButton(text='Получить установщик', callback_data='install_pc_get_installer')],
         [InlineKeyboardButton(text='Назад', callback_data='return_to_platforms')]
     ])

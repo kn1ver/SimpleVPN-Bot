@@ -222,7 +222,7 @@ async def install_vpn(callback: CallbackQuery, bot: Bot):
             else:
                 await callback.message.edit_text(
                     text=msg,
-                    reply_markup=markup.to_platforms,
+                    reply_markup=markup.pc,
                     parse_mode="HTML"
                 )
 
