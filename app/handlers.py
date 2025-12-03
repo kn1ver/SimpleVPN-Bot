@@ -98,7 +98,7 @@ async def set_expiryTime(message: Message, bot: Bot, state: FSMContext):
         expiryTime_ms = int(time.time()) * 1000 + int(expiryTime_days) * 24 * 3600 * 1000
 
         await db.set_user_data("chat_id", chat_id, "expires_at", expiryTime_ms)
-        xui.update_client_expiry(1, chat_id, int(expiryTime_days),logger)
+        xui.update_client_expiry(XUI_INBOUND_ID, chat_id, int(expiryTime_days),logger)
         await message.answer(f"Для пользователя {chat_id} установлено expiryTime: {expiryTime_days} дней")
         logger.debug(f"Для пользователя {chat_id} установлено expiryTime: {expiryTime_days} дней")
     return
