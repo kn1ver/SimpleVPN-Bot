@@ -1,7 +1,7 @@
 from aiogram.types import FSInputFile
 from aiogram import Bot
 from datetime import datetime
-from config import MESSAGES as msg_text, LINK_BODY
+from config import MESSAGES as msg_text, LINK_ADDR
 from utils.logger import logger
 from utils import xui
 from pathlib import Path
@@ -160,11 +160,7 @@ async def get_archive(user_id: str, bot: Bot, msg_id: int, logger=logger_default
 async def get_link(user_id: str, platform: str | None="Android"):
     xui_data = xui.get_user_data(user_id)
 
-    xui_id = xui_data[platform]["id"]
-    xui_email = xui_data[platform]["email"].replace(" ", "%20")
+    subId = xui_data[platform]["subId"]
 
-    addr = "vless://"
-
-    return addr + xui_id + LINK_BODY + xui_email
-
+    return f"{LINK_ADDR}/{subId}?name={subId}"
 

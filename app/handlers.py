@@ -4,7 +4,7 @@ import shutil
 import time
 
 import app.keyboards as markup
-from config import MESSAGES as msg_text
+from config import MESSAGES as msg_text, XUI_INBOUND_ID
 from config import ROUTING_RULES as routing_rules
 from utils.logger import logger
 from utils import xui
@@ -227,6 +227,11 @@ async def install_vpn(callback: CallbackQuery, bot: Bot):
                 )
 
         elif "android" in callback.data:
+            if "get_settings" in callback.data:
+                settings_file = FSInputFile("files/nekobox_settings.json")
+                await callback.message.answer_document(settings_file)
+                return
+
             user_config = await utils.get_link(str(user_id), "Android")
             msg = msg_text["platforms_adnroid"].format(
                 user_config=user_config,
@@ -236,7 +241,7 @@ async def install_vpn(callback: CallbackQuery, bot: Bot):
             await callback.message.edit_text(
                 text=msg,
                 parse_mode="HTML",
-                reply_markup=markup.to_platforms
+                reply_markup=markup.adnroid
             )
 
         elif "ios" in callback.data:
@@ -338,7 +343,7 @@ async def payment_action(callback: CallbackQuery, bot: Bot):
 
                     await db.set_user_data("chat_id", user_id, "bought_at", expires_old_ms)
                     await db.set_user_data("chat_id", user_id, "expires_at", expires_new)
-                    xui.update_client_expiry(1, user_id, 31, logger)
+                    xui.update_client_expiry(XUI_INBOUND_ID, user_id, 31, logger)
 
                     msg = msg_text["sub_renewed"].format(
                         expires_at=utils.parse_expiry_time(expires_new, "%d.%m.%y")

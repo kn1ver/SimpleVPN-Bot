@@ -24,6 +24,12 @@ pc = InlineKeyboardMarkup(
         [InlineKeyboardButton(text='Назад', callback_data='return_to_platforms')]
     ])
 
+adnroid = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [InlineKeyboardButton(text='Получить файл настроек', callback_data='install_android_get_settings')],
+        [InlineKeyboardButton(text='Назад', callback_data='return_to_platforms')]
+    ])
+
 buy_vpn = InlineKeyboardMarkup(
     inline_keyboard=[
         [InlineKeyboardButton(text='Купить/Продлить VPN', callback_data='buy_vpn')],

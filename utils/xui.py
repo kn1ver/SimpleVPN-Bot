@@ -5,11 +5,10 @@ import uuid
 import utils.utils as utils
 from utils.logger import logger
 
-from config import XUI_LOGIN, XUI_PASS, XUI_URL
+from config import XUI_LOGIN, XUI_PASS, XUI_URL, XUI_INBOUND_ID as INBOUND_ID
 
 session = requests.Session()
 logger_default = logger
-INBOUND_ID = 1
 
 def xui_login():
     r = session.post(f"{XUI_URL}/login", json={
@@ -30,12 +29,17 @@ def get_user_data(user_id: str, logger=logger_default) -> dict:
 
     r = session.get(f"{XUI_URL}/xui/API/inbounds/")
     r.raise_for_status()
+    
     all_inbounds = r.json()
     all_inbounds["obj"][0]["settings"] = json.loads(all_inbounds["obj"][0]["settings"])
+    for client in all_inbounds["obj"][0]["settings"]["clients"]:
+        logger.debug(client)
 
     r = session.post(f"{XUI_URL}/xui/API/inbounds/onlines")
     r.raise_for_status()
     onlines = r.json()
+    if not bool(onlines["obj"]):
+        onlines = {"obj": " "}
 
     logger.debug(f"get_usr_data | onlines:\n{onlines}")
 
@@ -86,6 +90,7 @@ def reg_user_connection(user_id: str, expiry_time: int, logger=logger_default) -
 
     for platform in platforms:
         client_uuid = str(uuid.uuid4())
+        subId = "autogen-" + str(uuid.uuid4())[:8]
         client_settings = {
             "clients": [{
                 "id": client_uuid,
@@ -95,7 +100,7 @@ def reg_user_connection(user_id: str, expiry_time: int, logger=logger_default) -
                 "expiryTime": expiry_time,
                 "enable": True,
                 "tgId": user_id,
-                "subId": "autogen-" + client_uuid[:8],
+                "subId": subId,
                 "limitIp": limitIp,
                 "reset": 0
             }]

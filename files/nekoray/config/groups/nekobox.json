@@ -40,6 +40,7 @@
     "test_url_dl": "http://cachefly.cachefly.net/10mb.test",
     "theme": "0",
     "traffic_loop_interval": 1000,
+    "vpn_bypass_process": "discord.exe\nfirefox.exe\nchrome.exe\nbrowser.exe\nyandex.exe",
     "vpn_hide_console": true,
     "vpn_impl": 0,
     "vpn_internal_tun": true,

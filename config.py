@@ -9,6 +9,8 @@ XUI_URL = os.getenv("XUI_URL")
 XUI_LOGIN = os.getenv("XUI_LOGIN")
 XUI_PASS = os.getenv("XUI_PASS")
 
+XUI_INBOUND_ID = 4
+
 MESSAGES = {
     "main_menu":"🚀 Добро пожаловать в SimpleVPN!\nБезопасный и быстрый интернет без отслеживания и скрытых списаний",
     "paid_0":   "Похоже, Вы еще не подключены к нашему VPN или не оплатили текущий период",
@@ -32,18 +34,13 @@ MESSAGES = {
 
     ),
     "platforms_adnroid": (
-                "Порядок установки VPN на android:\n\n"
-                "  1. Вставьте ссылку в адресную строку браузера: https://drive.google.com/file/d/1MsrZp13yQUGQHRZIAJHYU6CdSQIwffel/view?usp=sharing \n"
-                "  2. Загрузите файл <u>v2rayNG_1.10.23.apk</u> с диска\n"
-                "  3. Откройте этот файл и установите приложение\n"
-                "  4. Следуйте инструкциям отсюда: https://teletype.in/@kn1ver/Android-install \n\n"
+                "Для установки и настройки VPN\nСледуйте инструкциям отсюда: https://teletype.in/@kn1ver/Android-install \n\n"
 
                 "Ресурсы:\n"
                 "<u>Конфиг</u>:\n <code>{user_config}</code>\n\n"
-                "<u>Правила маршрутизации</u>:\n <code>{routing_rules}</code>"
     ),
     "platforms_ios": (
-                "Для установки настройки VPN\nСледуйте инструкциям отсюда: https://teletype.in/@kn1ver/install-ios \n\n"
+                "Для установки и настройки VPN\nСледуйте инструкциям отсюда: https://teletype.in/@kn1ver/install-ios \n\n"
 
                 "Ресурсы:\n"
                 "<u>Конфиг</u>:\n <code>{user_config}</code>\n\n"
@@ -116,8 +113,8 @@ ROUTING_RULES = {
     "adnroid": '[{"enabled":true,"ip":["geoip:ru"],"looked":false,"outboundTag":"direct","remarks":"geoip direct"},{"domain":["geosite:category-gov-ru","geosite:yandex","geosite:vk","regexp:xn--"],"enabled":true,"looked":false,"outboundTag":"direct","remarks":"geosite direct"},{"domain":["geosite:category-ads-all"],"enabled":true,"looked":false,"outboundTag":"block","remarks":"ads block"},{"enabled":true,"ip":["geoip:private"],"looked":false,"outboundTag":"direct","remarks":"geoip private"},{"domain":["geosite:private"],"enabled":true,"looked":false,"outboundTag":"direct","remarks":"geosite private"}]',
     "ios": 'v2box://routes?multi=W3siZW5hYmxlZCI6dHJ1ZSwiaXAiOlsiZ2VvaXA6cnUiXSwibG9ja2VkIjpmYWxzZSwib3V0Ym91bmRUYWciOiJkaXJlY3QiLCJyZW1hcmtzIjoiZ2VvaXAgZGlyZWN0In0seyJkb21haW4iOlsiZ2Vvc2l0ZTpjYXRlZ29yeS1nb3YtcnUiLCJnZW9zaXRlOnlhbmRleCIsImdlb3NpdGU6dmsiLCJyZWdleHA6eG4tLSJdLCJlbmFibGVkIjp0cnVlLCJsb2NrZWQiOmZhbHNlLCJvdXRib3VuZFRhZyI6ImRpcmVjdCIsInJlbWFya3MiOiJnZW9zaXRlIGRpcmVjdCJ9LHsiZG9tYWluIjpbImdlb3NpdGU6Y2F0ZWdvcnktYWRzLWFsbCJdLCJlbmFibGVkIjp0cnVlLCJsb2NrZWQiOmZhbHNlLCJvdXRib3VuZFRhZyI6ImJsb2NrIiwicmVtYXJrcyI6ImFkcyBibG9jayJ9LHsiZW5hYmxlZCI6dHJ1ZSwiaXAiOlsiZ2VvaXA6cHJpdmF0ZSJdLCJsb2NrZWQiOmZhbHNlLCJvdXRib3VuZFRhZyI6ImRpcmVjdCIsInJlbWFya3MiOiJnZW9pcCBwcml2YXRlIn0seyJkb21haW4iOlsiZ2Vvc2l0ZTpwcml2YXRlIl0sImVuYWJsZWQiOnRydWUsImxvY2tlZCI6ZmFsc2UsIm91dGJvdW5kVGFnIjoiZGlyZWN0IiwicmVtYXJrcyI6Imdlb3NpdGUgcHJpdmF0ZSJ9XQ=='
 }
-LINK_BODY = (
-    "@91.228.153.25:443?type=tcp&security=reality&pbk=NbVaXjLA9Q1w1lcBc3vmcDYkSyKbEc7LNbIC1FPK9SI&fp=chrome&sni=samsung.com&sid=&spx=%2F&flow=xtls-rprx-vision#VLESS%20Reality-"
+LINK_ADDR = (
+    "http://simple-kniver.fun:2096/update-info"
 )
 
 

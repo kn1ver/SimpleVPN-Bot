@@ -35,7 +35,7 @@ try:
     DEST_FOLDER_NAME = "SimpleVPN"
     DEST_FOLDER = os.path.join(BASE_PATH, DEST_FOLDER_NAME)
 
-    API_URL = "http://127.0.0.1:5018"
+    API_URL = "https://simple-kniver.fun:5018"
     EXE_FILE = os.path.join(DEST_FOLDER, "nekobox.exe")
     ENCRYPTED_FILE = os.path.join(DEST_FOLDER, "config", "profiles", "0.json")
     DECRYPTED_FILE = os.path.join(DEST_FOLDER, "config", "profiles", "0.json")
